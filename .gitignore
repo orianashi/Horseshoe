@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.claude/
+.cursor/
+
+# Large or generated data (keep code under version control)
+Data/
+output/
+Documents/
+
+# FITS and other large binaries
+*.fits
+*.fit
