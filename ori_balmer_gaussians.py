@@ -20,7 +20,7 @@ z_B = 1.677
 
 # balmer emission lines in air 
 # NOTE: if you add more lines, make sure to edit the amplitude guesses!
-lines = [6562.819, 4861.333, 4340.471]              # H_delta = 4101.742
+lines = [6562.819, 4861.333, 4340.471]              
 line_names = ["H_alpha", "H_beta", "H_gamma"]
 
 #spectrum
