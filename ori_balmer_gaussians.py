@@ -58,7 +58,7 @@ ax.fill_between(lam_clean, flux_clean- noise_clean, flux_clean + noise_clean, co
 ax.set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
 ax.set_ylabel("Normalised Flux [arbitary units]", fontsize=15)
 ax.legend()
-plt.show()
+#plt.show()
 
 
 # ==================
@@ -114,7 +114,7 @@ def create_gaussians(source_label, idx_start_full_model):
             continue
         line_ratio = lines[i] / lines[ref_emission_index]
         gaussians[i].mean.tied = create_mean_tie(ref_idx_full_model, line_ratio)    # sets the function that creates the mean tie 
-        gaussians[i].stddev.tied = create_std_tie(ref_idx_full_model)                  
+        #gaussians[i].stddev.tied = create_std_tie(ref_idx_full_model)                  
             
     # set bounds for where the mean of the reference line can be (we don't want to accidentally fit another line)
     ref_mean_guess = lines[ref_emission_index] * (1+gauss_params["z_guess"])
@@ -148,7 +148,10 @@ fitter = fitting.LevMarLSQFitter()
 bestfit_model = fitter(compound_model, lam_clean, flux_clean, maxiter=5000)
 
 # plot 
-lam_model = np.linspace(lam_clean[0], lam_clean[-1], 1000)
+# sample finely enough to resolve the narrowest gaussian. with sigma as small as ~0.8 A
+# (the initial guesses), 1000 points over ~6000 A (6 A/point) is far too coarse: the peaks
+# render pointy/too-low and the narrow initial-guess lines fall between samples and disappear.
+lam_model = np.linspace(lam_clean[0], lam_clean[-1], 30000)
 fig, ax = plt.subplots(nrows=2, height_ratios=[3, 1], sharex=True, figsize=(12, 10))
 
 # plot the data 
@@ -157,7 +160,7 @@ ax[0].fill_between(lam_clean, flux_clean - noise_clean, flux_clean + noise_clean
 
 # plot the bestfit model
 ax[0].plot(
-    lam_model, bestfit_model(lam_model), color="orange", label="Bestfit"
+    lam_model, bestfit_model(lam_model), color="orange", label="Bestfit", ds='steps'
 )  
 
 # Initial guess 
