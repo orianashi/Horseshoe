@@ -323,7 +323,7 @@ ax[1].scatter(
 )
 ax[1].legend(frameon=True)
 
-fig.savefig("./output/Tania_OIII5007_OIII4959_Hbeta_bestfit_model.png", bbox_inches="tight")
+#fig.savefig("./output/Tania_OIII5007_OIII4959_Hbeta_bestfit_model.png", bbox_inches="tight")
 
 # -------------------------------------------------------------------------------------------------
 #                               Save the bestfit model parameters
@@ -336,8 +336,8 @@ fig.savefig("./output/Tania_OIII5007_OIII4959_Hbeta_bestfit_model.png", bbox_inc
 # or if you want to make plots of the bestfit model later on.
 
 # this says open a binary file for writing (wb) called OIII5007_OIII4959_Hbeta_bestfit_model.pkl
-with open("./output/Tania_OIII5007_OIII4959_Hbeta_bestfit_model.pkl", "wb") as f:
-    dill.dump(bestfit_model, f)
+#with open("./output/Tania_OIII5007_OIII4959_Hbeta_bestfit_model.pkl", "wb") as f:
+    #dill.dump(bestfit_model, f)
 
 # Then, in another script, you can load the bestfit model back into python like this:
 # with open("../outputs/OIII5007_OIII4959_Hbeta_bestfit_model.pkl", "rb") as f:
