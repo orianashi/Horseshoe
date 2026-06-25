@@ -185,11 +185,9 @@ ax[1].legend(frameon=True)
 plt.show()
 
 # save 
-"""
 fig.savefig('./output/balmer_bestfit_gaussians.png')
 with open('./output/ori_balmer_bestfit_gaussians.pkl','wb') as f:
     dill.dump(bestfit_model, f)
-"""
 
 
 

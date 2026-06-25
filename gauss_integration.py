@@ -2,16 +2,14 @@ import dill
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
-from astropy.io import fits
-from astropy.modeling import models, fitting
-from functools import reduce
-import operator
 
 plt.ion()  
 
 # ======================================
 # initialize information
 # ======================================
+# NOTE : flux units are in ergs/s/cm^2 /Angstrom
+
 # balmer emission lines in air 
 
 lines = {
@@ -98,7 +96,15 @@ balmer_ratios = {
         'A': fluxes_A,
         'B': fluxes_B,
     },
+    'units' : 'ergs / s / cm2'
 }
 
 with open('./output/balmer_decrement_ratios.pkl', 'wb') as f:
     dill.dump(balmer_ratios, f)
+
+print(ab_A / ab * 100)
+print(ab_B / ab * 100)
+print(gb_A / gb * 100)
+print(gb_B / gb * 100)
+
+# bolometric flux units:  ergs/s/cm^2 
