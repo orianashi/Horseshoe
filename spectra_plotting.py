@@ -90,7 +90,7 @@ nans_flux_NIR = np.isnan(flux_nir_norm).sum()
 noise_in_quadrature = True
 
 def boxcar_smooth(flux, noise=None):
-    boxcar = 10
+    boxcar = 2
     radius = boxcar // 2
     flux_smooth = np.full_like(flux, np.nan, dtype=float)
     noise_smooth = np.full_like(noise, np.nan, dtype=float) if noise is not None else None
@@ -126,9 +126,9 @@ noise_nir_plot = noise_nir_quad if noise_in_quadrature else noise_nir_smooth
 z_A = 1.679 
 z_B = 1.677 #this one makes the peaks line up better with the lines 
 
-lam_uvb_rest = lam_uvb_trim / (1+z_B)
-lam_vis_rest = lam_vis_trim / (1+z_B)
-lam_nir_rest = lam_nir_trim / (1+z_B)
+lam_uvb_rest = lam_uvb_trim / (1+z_A)
+lam_vis_rest = lam_vis_trim / (1+z_A)
+lam_nir_rest = lam_nir_trim / (1+z_A)
 
 #load in reference 
 horseshoe_ref = np.genfromtxt('./absorption_wls/horseshoe_atoms.dat',dtype=str)
@@ -147,15 +147,15 @@ z_ism = 1.5553
 
 #set up all-wavelength plot 
 fig,axes= plt.subplots(3,1,figsize=(16,9),sharex=False,gridspec_kw={"hspace":0.6})
-axes[0].plot(lam_uvb_rest,flux_uvb_smooth)
+axes[0].plot(lam_uvb_rest,flux_uvb_smooth, ds='steps')
 axes[0].fill_between(lam_uvb_rest, flux_uvb_smooth - noise_uvb_plot, flux_uvb_smooth + noise_uvb_plot, alpha=0.2, lw=1.5,color='lightgrey', label="1 sigma")
 axes[0].set_title('Rest-frame UVB',pad=15)
 
-axes[1].plot(lam_vis_rest,flux_vis_smooth)
+axes[1].plot(lam_vis_rest,flux_vis_smooth, ds='steps')
 axes[1].fill_between(lam_vis_rest, flux_vis_smooth - noise_vis_plot, flux_vis_smooth + noise_vis_plot, alpha=0.2, lw=1.5,color='lightgrey', label="1 sigma")
 axes[1].set_title('Rest-frame VIS',pad=15)
 
-axes[2].plot(lam_nir_rest,flux_nir_smooth)
+axes[2].plot(lam_nir_rest,flux_nir_smooth, ds='steps')
 axes[2].fill_between(lam_nir_rest, flux_nir_smooth - noise_nir_plot, flux_nir_smooth + noise_nir_plot, alpha=0.2,lw=1.5, color='lightgrey', label="1 sigma")
 axes[2].set_title('Rest-frame NIR',pad=15)
 
