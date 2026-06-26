@@ -150,14 +150,20 @@ fig,axes= plt.subplots(3,1,figsize=(16,9),sharex=False,gridspec_kw={"hspace":0.6
 axes[0].plot(lam_uvb_rest,flux_uvb_smooth, ds='steps')
 axes[0].fill_between(lam_uvb_rest, flux_uvb_smooth - noise_uvb_plot, flux_uvb_smooth + noise_uvb_plot, alpha=0.2, lw=1.5,color='lightgrey', label="1 sigma")
 axes[0].set_title('Rest-frame UVB',pad=15)
+axes[0].set_xlabel("Observed Wavelength [Angstroms]", fontsize=8)
+axes[0].set_ylabel("Normalised Flux [erg/s/cm2]", fontsize=8)
 
 axes[1].plot(lam_vis_rest,flux_vis_smooth, ds='steps')
 axes[1].fill_between(lam_vis_rest, flux_vis_smooth - noise_vis_plot, flux_vis_smooth + noise_vis_plot, alpha=0.2, lw=1.5,color='lightgrey', label="1 sigma")
 axes[1].set_title('Rest-frame VIS',pad=15)
+axes[1].set_xlabel("Observed Wavelength [Angstroms]", fontsize=8)
+axes[1].set_ylabel("Normalised Flux [erg/s/cm2]", fontsize=8)
 
 axes[2].plot(lam_nir_rest,flux_nir_smooth, ds='steps')
 axes[2].fill_between(lam_nir_rest, flux_nir_smooth - noise_nir_plot, flux_nir_smooth + noise_nir_plot, alpha=0.2,lw=1.5, color='lightgrey', label="1 sigma")
 axes[2].set_title('Rest-frame NIR',pad=15)
+axes[2].set_xlabel("Observed Wavelength [Angstroms]", fontsize=8)
+axes[2].set_ylabel("Normalised Flux [erg/s/cm2]", fontsize=8)
 
 #plot the absorption lines !
 for i in range(len(horseshoe_wl)):
