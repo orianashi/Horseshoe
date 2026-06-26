@@ -18,7 +18,7 @@ z_A = 1.679
 z_B = 1.677
 
 # balmer emission lines in air
-# NOTE: if you add more lines, make sure to edit the amplitude guesses!
+# NOTE: if you change the lines, make sure to edit the amplitude guesses!
 lines = [6562.819, 6583.460, 6548.050]
 line_names = ["H_alpha", "[NII]6583", "[NII]6548.050"]
 
@@ -62,7 +62,7 @@ ax.fill_between(lam_clean,
                 alpha=0.3,
                 label="noise")
 ax.set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
-ax.set_ylabel("Normalised Flux [ergs/s/cm2]", fontsize=15)
+ax.set_ylabel("Normalised Flux [ergs/s/cm2/AA]", fontsize=15)
 ax.legend()
 #plt.show()
 
@@ -74,12 +74,12 @@ gauss_guesses = {
     'A': {
         'z_guess': z_A,
         'amplitudes': np.array([45, 2, 2]),
-        'stddev': 1
+        'stddev': np.array([3,1.5,1.5])
     },
     'B': {
         'z_guess': z_B,
         'amplitudes': np.array([25, 2, 2]),
-        'stddev': 0.8
+        'stddev': np.array([3,1.5,1.5])
     }
 }
 
@@ -121,7 +121,7 @@ def create_gaussians(source_label, idx_start_full_model):
             models.Gaussian1D(name=f'{line_names[i]}_{source_label}',
                               mean=lines[i] * (gauss_params['z_guess'] + 1),
                               amplitude=gauss_params['amplitudes'][i],
-                              stddev=gauss_params['stddev']))
+                              stddev=gauss_params['stddev'][i]))
     # store the proper tying method
     for i in range(len(gaussians)):
         if i == ref_emission_index:
@@ -171,6 +171,7 @@ bestfit_model = fitter(compound_model,
                        weights=1.0 / noise_clean,
                        maxiter=5000)
 
+"""
 # errors directly through fitter and param_cov  
 param_cov = fitter.fit_info['param_cov']
 uncert = np.sqrt(np.diag(param_cov)) #only for untied variables (so missing 2 means for each gaussian)
@@ -187,6 +188,7 @@ print("free params:", len(free_names), free_names)
 cov = bestfit_model.cov_matrix.cov_matrix      # the underlying numpy array
 print("cov shape:", cov.shape)
 print("n stds:", len(np.diag(cov)))
+"""
 
 # plot
 # sample finely enough to resolve the narrowest gaussian. 
@@ -222,7 +224,7 @@ ax[0].plot(lam_model,
 
 # Set the x and y labels and add a legend
 ax[0].set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
-ax[0].set_ylabel("Normalised Flux [erg/s/cm2]", fontsize=15)
+ax[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
 ax[0].legend(frameon=False)
 
 # plot the residuals (data - model) in the second subplot
