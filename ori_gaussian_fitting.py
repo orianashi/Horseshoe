@@ -18,9 +18,15 @@ z_A = 1.679
 z_B = 1.677
 
 # balmer emission lines in air
-# NOTE: if you change the lines, make sure to edit the amplitude guesses!
+# NOTE: if you change the lines, make sure to edit the amplitude guesses and file save!
+
 lines = [6562.819, 6583.460, 6548.050]
 line_names = ["H_alpha", "[NII]6583", "[NII]6548.050"]
+"""
+
+lines = [6562.819, 4861.33, 4340.47]
+line_names = ["H_alpha", "H_beta", "H_gamma"]
+"""
 
 #spectrum
 spec_lib = "./Data/X-Shooter/1D/stacked_NIR.fits"
@@ -240,6 +246,6 @@ ax[1].legend(frameon=True)
 plt.show()
 
 # save
-fig.savefig('./output/balmer_bestfit_gaussians.png')
-with open('./output/ori_balmer_bestfit_gaussians.pkl', 'wb') as f:
+fig.savefig('./output/NII/Halpha_NII_bestfit_gaussians.png')
+with open('./output/NII/Halpha_NII_bestfit_gaussians.pkl', 'wb') as f:
     dill.dump(bestfit_model, f)
