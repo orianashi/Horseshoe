@@ -64,7 +64,7 @@ ax.legend()
 #plt.show()
 
 # ==================
-# initial guesses and tying
+# initial guesses
 # ==================
 gauss_guesses = {
     'A': {
@@ -79,33 +79,109 @@ gauss_guesses = {
     }
 }
 
-ref_emission_index = 0
+# blend region boundaries
+blend_lo = lines[0] * (1 + z_A) - 3   # just below 3726A peak
+blend_hi = lines[1] * (1 + z_B) + 3   # just above 3729B peak
 
+unblended = (lam_clean < blend_lo) | (lam_clean > blend_hi)
+lam_wing   = lam_clean[unblended]
+flux_wing  = flux_clean[unblended]
+noise_wing = noise_clean[unblended]
+
+fitter = fitting.TRFLSQFitter(calc_uncertainties=True)
+
+# ==================
+# unblended-only fit anchored to OIII redshifts
+#
+# 3726A (source A) and 3729B (source B) overlap at ~9982 A and cannot be
+# reliably decomposed. Instead, fit only the two clean unblended lines:
+#   3729A on the red wing (~9990 A)
+#   3726B on the blue wing (~9975 A)
+# Means are fixed from [OIII]5007 bestfit redshifts. Blend region ignored entirely.
+# ==================
+with open('./output/OIII/OIII_Hbeta_bestfit_gaussians.pkl', 'rb') as f:
+    oiii_model = dill.load(f)
+
+# derive redshifts from [OIII]5007 (brightest line, indices 2=A, 5=B)
+oiii_rest = 5006.843
+z_A_oiii = oiii_model.mean_2.value / oiii_rest - 1
+z_B_oiii = oiii_model.mean_5.value / oiii_rest - 1
+
+# build a 2-Gaussian model: 3729A (red wing) + 3726B (blue wing)
+g_3729A = models.Gaussian1D(name="[OII]3729_A",
+                             mean=lines[1] * (1 + z_A_oiii),
+                             amplitude=gauss_guesses['A']['amplitudes'][1],
+                             stddev=gauss_guesses['A']['stddev'][1])
+g_3726B = models.Gaussian1D(name="[OII]3726_B",
+                             mean=lines[0] * (1 + z_B_oiii),
+                             amplitude=gauss_guesses['B']['amplitudes'][0],
+                             stddev=gauss_guesses['B']['stddev'][0])
+
+# fix means from OIII — only amplitudes and stddevs are free
+g_3729A.mean.fixed = True
+g_3726B.mean.fixed = True
+
+continuum_wing = models.Const1D(amplitude=np.nanmedian(flux_clean), name="continuum")
+wing_model = g_3729A + g_3726B + continuum_wing
+
+# fit on wing-only data
+wing_bestfit = fitter(wing_model, lam_wing, flux_wing,
+                      weights=1.0 / noise_wing, maxiter=5000)
+
+# ==================
+# plot
+# ==================
+lam_model = np.linspace(lam_clean[0], lam_clean[-1], 30000)
+fig2, ax2 = plt.subplots(nrows=2, height_ratios=[3, 1], sharex=True, figsize=(12, 10))
+
+ax2[0].plot(lam_clean, flux_clean, c="black", label="data", ds="steps")
+ax2[0].fill_between(lam_clean, flux_clean - noise_clean, flux_clean + noise_clean,
+                    color="lightgrey", alpha=0.3, label="noise")
+ax2[0].axvspan(blend_lo, blend_hi, color="yellow", alpha=0.2, label="blend region (excluded)")
+ax2[0].plot(lam_model, wing_bestfit(lam_model), color="orange", label="wing fit", ds="steps")
+ax2[0].plot(lam_model, wing_bestfit[0](lam_model), color="blue", ls="--", alpha=0.7, label="[OII]3729_A")
+ax2[0].plot(lam_model, wing_bestfit[1](lam_model), color="red",  ls="-",  alpha=0.7, label="[OII]3726_B")
+ax2[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
+ax2[0].set_title(f"Wing-only fit  |  z_A = {z_A_oiii:.5f}  z_B = {z_B_oiii:.5f} (calculated from fitted mean of [OIII]5007)", fontsize=12)
+ax2[0].legend(frameon=False)
+
+ax2[1].scatter(lam_wing, flux_wing - wing_bestfit(lam_wing),
+               s=10, c="orange", label="residuals (wing only)", alpha=0.5)
+ax2[1].set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
+ax2[1].legend(frameon=True)
+plt.show()
+
+# save
+fig2.savefig('./output/OII/OII_wingfit_gaussians.png')
+with open('./output/OII/OII_wingfit_gaussians.pkl', 'wb') as f:
+    dill.dump(wing_bestfit, f)
+
+"""
+# ==================
+# four-gaussian two-stage fit
+#
+# fits all four components: 3726A, 3729A, 3726B, 3729B.
+# 3726A and 3729B overlap at ~9982 A, making them degenerate.
+# stage 1 fits wing-only data to anchor means and stddevs,
+# stage 2 fixes those and refits amplitudes over the full region.
+# ==================
 
 def create_mean_tie(full_model_ref_emission_idx, line_ratio):
-
     def tie_mean(model):
         ref_mean = getattr(model, f'mean_{full_model_ref_emission_idx}')
         return ref_mean * line_ratio
-
     return tie_mean
 
-
 def create_std_tie(full_model_ref_emission_idx):
-
     def tie_std(model):
         return getattr(model, f'stddev_{full_model_ref_emission_idx}')
-
     return tie_std
 
+ref_emission_index = 0
 
-# ==================
-# define the function that creates the tied gaussians we need for one source
-# ==================
 def create_gaussians(source_label, idx_start_full_model):
     ref_idx_full_model = idx_start_full_model + ref_emission_index
     gauss_params = gauss_guesses[source_label]
-
     gaussians = []
     for i in range(len(lines)):
         gaussians.append(
@@ -118,55 +194,22 @@ def create_gaussians(source_label, idx_start_full_model):
             continue
         line_ratio = lines[i] / lines[ref_emission_index]
         gaussians[i].mean.tied = create_mean_tie(ref_idx_full_model, line_ratio)
-        # tie stddev within each source so the blended components inherit a
-        # well-constrained line width from the clean unblended line of that source
         gaussians[i].stddev.tied = create_std_tie(ref_idx_full_model)
-
     ref_mean_guess = lines[ref_emission_index] * (1 + gauss_params["z_guess"])
-    gaussians[ref_emission_index].mean.bounds = (ref_mean_guess - 10,
-                                                 ref_mean_guess + 10)
-
+    gaussians[ref_emission_index].mean.bounds = (ref_mean_guess - 10, ref_mean_guess + 10)
     return gaussians
 
-
-# ==================
-# initialize!
-# ==================
 gs_A = create_gaussians("A", 0)
 gs_B = create_gaussians("B", len(lines))
-
 continuum = models.Const1D(amplitude=np.nanmedian(flux_clean), name="continuum")
-
 concat_gaussians = gs_A + gs_B + [continuum]
 compound_model = reduce(operator.add, concat_gaussians)
 
-# ==================
-# two-stage fit to handle the 3726A / 3729B blend
-#
-# 3726A (source A) and 3729B (source B) land at ~the same observed wavelength
-# (~9982 A), making them degenerate in a single-pass fit.
-#
-# Stage 1 — fit only the unblended wings:
-#   red wing  (~9990 A): 3729A  → pins source A redshift (via mean tie) and stddev
-#   blue wing (~9975 A): 3726B  → pins source B redshift and stddev
-# Stage 2 — fix means and stddevs from stage 1, refit amplitudes over the full region
-# ==================
-fitter = fitting.TRFLSQFitter(calc_uncertainties=True)
-
-# blend region boundaries (tune by eye if needed)
-blend_lo = lines[0] * (1 + z_A) - 3   # just below 3726A peak
-blend_hi = lines[1] * (1 + z_B) + 3   # just above 3729B peak
-
-unblended = (lam_clean < blend_lo) | (lam_clean > blend_hi)
-lam_wing   = lam_clean[unblended]
-flux_wing  = flux_clean[unblended]
-noise_wing = noise_clean[unblended]
-
-# Stage 1: anchor means and stddevs from the clean wings
+# stage 1: anchor means and stddevs from the clean wings
 stage1_model = fitter(compound_model, lam_wing, flux_wing,
                       weights=1.0 / noise_wing, maxiter=5000)
 
-# Stage 2: fix means and stddevs, refit amplitudes over the full region
+# stage 2: fix means and stddevs, refit amplitudes over the full region
 for i in range(len(gs_A) + len(gs_B)):
     getattr(stage1_model, f'mean_{i}').fixed   = True
     getattr(stage1_model, f'stddev_{i}').fixed = True
@@ -174,40 +217,31 @@ for i in range(len(gs_A) + len(gs_B)):
 bestfit_model = fitter(stage1_model, lam_clean, flux_clean,
                        weights=1.0 / noise_clean, maxiter=5000)
 
-# unfix for inspection
-for i in range(len(gs_A) + len(gs_B)):
-    getattr(bestfit_model, f'mean_{i}').fixed   = False
-    getattr(bestfit_model, f'stddev_{i}').fixed = False
-
-# ==================
-# plot
-# ==================
 lam_model = np.linspace(lam_clean[0], lam_clean[-1], 30000)
-fig, ax = plt.subplots(nrows=2,
-                       height_ratios=[3, 1],
-                       sharex=True,
-                       figsize=(12, 10))
-
+fig, ax = plt.subplots(nrows=2, height_ratios=[3, 1], sharex=True, figsize=(12, 10))
 ax[0].plot(lam_clean, flux_clean, c="black", label="data", ds="steps")
-ax[0].fill_between(lam_clean,
-                   flux_clean - noise_clean,
-                   flux_clean + noise_clean,
-                   color="lightgrey",
-                   alpha=0.3,
-                   label="noise")
+ax[0].fill_between(lam_clean, flux_clean - noise_clean, flux_clean + noise_clean,
+                   color="lightgrey", alpha=0.3, label="noise")
 ax[0].plot(lam_model, bestfit_model(lam_model), color="orange", label="Bestfit", ds='steps')
 ax[0].plot(lam_model, compound_model(lam_model), c="green", label="Initial guess", alpha=0.5, ls=":")
+component_styles = {
+    "[OII]3726_A": ("blue",  "-"),
+    "[OII]3729_A": ("blue",  "--"),
+    "[OII]3726_B": ("red",   "-"),
+    "[OII]3729_B": ("red",   "--"),
+}
+for i, name in enumerate([f"{ln}_{src}" for src in ["A", "B"] for ln in line_names]):
+    color, ls = component_styles[name]
+    ax[0].plot(lam_model, bestfit_model[i](lam_model),
+               color=color, ls=ls, alpha=0.7, label=name)
 ax[0].set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
 ax[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
 ax[0].legend(frameon=False)
-
-ax[1].scatter(lam_clean,
-              flux_clean - bestfit_model(lam_clean),
+ax[1].scatter(lam_clean, flux_clean - bestfit_model(lam_clean),
               s=10, c="orange", label="flux - model residuals", alpha=0.5)
 ax[1].legend(frameon=True)
 plt.show()
-
-# save
 fig.savefig('./output/OII/OII_bestfit_gaussians.png')
 with open('./output/OII/OII_bestfit_gaussians.pkl', 'wb') as f:
     dill.dump(bestfit_model, f)
+"""
