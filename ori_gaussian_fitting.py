@@ -20,10 +20,16 @@ z_B = 1.677
 # balmer emission lines in air
 # NOTE: if you change the lines, make sure to edit the amplitude guesses and file save!
 
+# OIII / HBETA
+lines = [4861.333, 4958.911, 5006.843]
+line_names = ["Hbeta", "[OIII]4959", "[OIII]5007"]
+"""
+# NII / HALPHA
 lines = [6562.819, 6583.460, 6548.050]
 line_names = ["H_alpha", "[NII]6583", "[NII]6548.050"]
 """
-
+"""
+# BALMER DECREMENTS
 lines = [6562.819, 4861.33, 4340.47]
 line_names = ["H_alpha", "H_beta", "H_gamma"]
 """
@@ -79,13 +85,13 @@ ax.legend()
 gauss_guesses = {
     'A': {
         'z_guess': z_A,
-        'amplitudes': np.array([45, 2, 2]),
-        'stddev': np.array([3,1.5,1.5])
+        'amplitudes': np.array([20, 35, 100]),
+        'stddev': np.array([3, 1.5, 1.5])
     },
     'B': {
         'z_guess': z_B,
-        'amplitudes': np.array([25, 2, 2]),
-        'stddev': np.array([3,1.5,1.5])
+        'amplitudes': np.array([10, 15, 45]),
+        'stddev': np.array([3, 1.5, 1.5])
     }
 }
 
@@ -176,7 +182,6 @@ bestfit_model = fitter(compound_model,
                        flux_clean,
                        weights=1.0 / noise_clean,
                        maxiter=5000)
-
 """
 # errors directly through fitter and param_cov  
 param_cov = fitter.fit_info['param_cov']
@@ -197,7 +202,7 @@ print("n stds:", len(np.diag(cov)))
 """
 
 # plot
-# sample finely enough to resolve the narrowest gaussian. 
+# sample finely enough to resolve the narrowest gaussian.
 lam_model = np.linspace(lam_clean[0], lam_clean[-1], 30000)
 fig, ax = plt.subplots(nrows=2,
                        height_ratios=[3, 1],
@@ -246,6 +251,6 @@ ax[1].legend(frameon=True)
 plt.show()
 
 # save
-fig.savefig('./output/NII/Halpha_NII_bestfit_gaussians.png')
-with open('./output/NII/Halpha_NII_bestfit_gaussians.pkl', 'wb') as f:
+fig.savefig('./output/OIII/OIII_Hbeta_bestfit_gaussians.png')
+with open('./output/OIII/OIII_Hbeta_bestfit_gaussians.pkl', 'wb') as f:
     dill.dump(bestfit_model, f)

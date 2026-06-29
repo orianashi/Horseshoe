@@ -3,30 +3,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 
-plt.ion()  
+plt.ion()
 
 # ======================================
 # initialize information
 # ======================================
 # NOTE : flux units are in ergs/s/cm^2 /Angstrom
 
-# balmer emission lines in air for reference (not used in calculations )
-# NOTE: if you change these, make sure to update the filename ratios to calcualte what you want 
-#lines = ["H_alpha", "H_beta", "H_gamma"]
-lines = ["H_alpha", "[NII]6583", "[NII]6548"] 
+# NOTE: if you change these, make sure to update the filename ratios to calcualte what you want
+#lines = ["Hbeta", "[OIII]4959", "[OIII]5007"]
+#lines = ["H_alpha", "[NII]6583", "[NII]6548"]
+lines = ["H_alpha", "H_beta", "H_gamma"]
 
-# import the gauss parameters from pkl 
-with open('./output/NII//Halpha_NII_bestfit_gaussians.pkl','rb') as f:
+# import the gauss parameters from pkl
+with open('./output/balmer/ori_balmer_bestfit_gaussians.pkl', 'rb') as f:
     bestfit_model = dill.load(f)
 
-# separate out the two sources (and continuum) and extract the parameters 
+# separate out the two sources (and continuum) and extract the parameters
 means_A = []
 means_B = []
 stddevs_A = []
 stddevs_B = []
 amps_A = []
 amps_B = []
-b_uncert_base = 3 + (len(lines)-1) * 2  #7 for 3 lines
+b_uncert_base = 3 + (len(lines) - 1) * 2  #7 for 3 lines
 for i in range(len(lines)):
     means_A.append(getattr(bestfit_model, f'mean_{i}').value)
     means_B.append(getattr(bestfit_model, f'mean_{len(lines)+i}').value)
@@ -35,56 +35,120 @@ for i in range(len(lines)):
     amps_A.append(getattr(bestfit_model, f'amplitude_{i}').value)
     amps_B.append(getattr(bestfit_model, f'amplitude_{len(lines)+i}').value)
 gauss_params = {
-    'A': { 'means': np.array(means_A),
-          'amplitudes': np.array(amps_A),
-          'stddevs': np.array(stddevs_A),
-          'mean_uncert': bestfit_model.stds[1],
-          'amplitudes_uncert': np.array([bestfit_model.stds[0], bestfit_model.stds[3], bestfit_model.stds[5]]),
-          'stddevs_uncert': np.array([bestfit_model.stds[2],bestfit_model.stds[4],bestfit_model.stds[6]])
+    'A': {
+        'means':
+        np.array(means_A),
+        'amplitudes':
+        np.array(amps_A),
+        'stddevs':
+        np.array(stddevs_A),
+        'mean_uncert':
+        bestfit_model.stds[1],
+        'amplitudes_uncert':
+        np.array([
+            bestfit_model.stds[0], bestfit_model.stds[3], bestfit_model.stds[5]
+        ]),
+        'stddevs_uncert':
+        np.array([
+            bestfit_model.stds[2], bestfit_model.stds[4], bestfit_model.stds[6]
+        ])
     },
-    'B': { 'means': np.array(means_B),
-          'amplitudes': np.array(amps_B),
-          'stddevs': np.array(stddevs_B),
-          'mean_uncert': bestfit_model.stds[b_uncert_base+1],
-          'amplitudes_uncert': np.array([bestfit_model.stds[b_uncert_base],bestfit_model.stds[b_uncert_base+ 3], bestfit_model.stds[b_uncert_base+5]]),
-          'stddevs_uncert': np.array([bestfit_model.stds[b_uncert_base+2],bestfit_model.stds[b_uncert_base + 4], bestfit_model.stds[b_uncert_base+6]])
+    'B': {
+        'means':
+        np.array(means_B),
+        'amplitudes':
+        np.array(amps_B),
+        'stddevs':
+        np.array(stddevs_B),
+        'mean_uncert':
+        bestfit_model.stds[b_uncert_base + 1],
+        'amplitudes_uncert':
+        np.array([
+            bestfit_model.stds[b_uncert_base],
+            bestfit_model.stds[b_uncert_base + 3],
+            bestfit_model.stds[b_uncert_base + 5]
+        ]),
+        'stddevs_uncert':
+        np.array([
+            bestfit_model.stds[b_uncert_base + 2],
+            bestfit_model.stds[b_uncert_base + 4],
+            bestfit_model.stds[b_uncert_base + 6]
+        ])
     }
 }
 continuum = getattr(bestfit_model, f'amplitude_{len(lines)*2}').value
 
 
-# define integration function for one gaussian 
+# define integration function for one gaussian
 def integrate(amp, stddev, amp_uncert, stddev_uncert):
-    area = amp * stddev * np.sqrt(2 * np.pi) # gaussian's technically don't "end", but the indefinite integral int_-inf^inf(gaussian(lam) dlam) = A * stddev * root(2pi)
-    area_uncert = np.sqrt((amp_uncert/amp)**2 + (stddev_uncert/stddev)**2 ) * area 
+    area = amp * stddev * np.sqrt(
+        2 * np.pi
+    )  # gaussian's technically don't "end", but the indefinite integral int_-inf^inf(gaussian(lam) dlam) = A * stddev * root(2pi)
+    area_uncert = np.sqrt((amp_uncert / amp)**2 +
+                          (stddev_uncert / stddev)**2) * area
     return area, area_uncert
+
 
 # define calculate ratios function
 def ratios(num, denom, num_uncert, denom_uncert):
-    ratio = num/denom
-    ratio_uncert = np.sqrt((num_uncert/num)**2 + (denom_uncert/denom)**2) * ratio
-    return ratio, ratio_uncert 
+    ratio = num / denom
+    ratio_uncert = np.sqrt((num_uncert / num)**2 +
+                           (denom_uncert / denom)**2) * ratio
+    return ratio, ratio_uncert
 
-# run on all gaussians for each source 
+
+# run on all gaussians for each source
 fluxes_A = np.zeros(len(lines))
 fluxes_B = np.zeros(len(lines))
 flux_uncerts_A = np.zeros(len(lines))
 flux_uncerts_B = np.zeros(len(lines))
 for i in range(len(lines)):
-    fluxes_A[i], flux_uncerts_A[i] = integrate(gauss_params['A']['amplitudes'][i],gauss_params['A']['stddevs'][i], gauss_params['A']['amplitudes_uncert'][i],gauss_params['A']['stddevs_uncert'][i])
-    fluxes_B[i], flux_uncerts_B[i] = integrate(gauss_params['B']['amplitudes'][i],gauss_params['B']['stddevs'][i], gauss_params['A']['amplitudes_uncert'][i],gauss_params['A']['stddevs_uncert'][i])
+    fluxes_A[i], flux_uncerts_A[i] = integrate(
+        gauss_params['A']['amplitudes'][i], gauss_params['A']['stddevs'][i],
+        gauss_params['A']['amplitudes_uncert'][i],
+        gauss_params['A']['stddevs_uncert'][i])
+    fluxes_B[i], flux_uncerts_B[i] = integrate(
+        gauss_params['B']['amplitudes'][i], gauss_params['B']['stddevs'][i],
+        gauss_params['B']['amplitudes_uncert'][i],
+        gauss_params['B']['stddevs_uncert'][i])
 
 for i in range(len(fluxes_A)):
-    print(f"Flux for {lines[i]} for source A: {fluxes_A[i]:.3f} +/- {np.abs(flux_uncerts_A[i]):.3f} ergs/s/cm2")
-    print(f"Flux for {lines[i]} for source B: {fluxes_B[i]:.3f} +/- {np.abs(flux_uncerts_B[i]):.3f} ergs/s/cm2")
-    
+    print(
+        f"Flux for {lines[i]} for source A: {fluxes_A[i]:.3f} +/- {np.abs(flux_uncerts_A[i]):.3f} ergs/s/cm2"
+    )
+    print(
+        f"Flux for {lines[i]} for source B: {fluxes_B[i]:.3f} +/- {np.abs(flux_uncerts_B[i]):.3f} ergs/s/cm2"
+    )
+
+"""
+# OIII/Hbeta
+OIIIbeta_A, OIIIbeta_A_uncert = ratios(fluxes_A[2], fluxes_A[0],
+                                       flux_uncerts_A[2], flux_uncerts_A[0])
+OIIIbeta_B, OIIIbeta_B_uncert = ratios(fluxes_B[2], fluxes_B[0],
+                                       flux_uncerts_B[2], flux_uncerts_B[0])
+print(f"[OIII]/Hbeta for source A: {OIIIbeta_A} +- {OIIIbeta_A_uncert}")
+print(f"[OIII]/Hbeta for source B: {OIIIbeta_B} +- {OIIIbeta_B_uncert}")
+OIIIbetas = {
+    "A": {
+        'OIIIbeta': OIIIbeta_A,
+        'OIIIbeta_uncert': OIIIbeta_A_uncert
+    },
+    "B": {
+        'OIIIbeta': OIIIbeta_B,
+        'OIIIbeta_uncert': OIIIbeta_B_uncert
+    }
+}
+with open('./output/OIII/OIII_Hbeta_ratios.pkl', 'wb') as f:
+    dill.dump(OIIIbetas, f)
+"""
+
+"""
 # NII6584/Halpha.
 NIIalpha_A, NIIalpha_A_uncert = ratios(fluxes_A[1], fluxes_A[0], flux_uncerts_A[1], flux_uncerts_A[0])
 NIIalpha_B, NIIalpha_B_uncert = ratios(fluxes_B[1], fluxes_B[0], flux_uncerts_B[1], flux_uncerts_B[0])
 print(f"[NII]/Halpha for source A: {NIIalpha_A} +- {NIIalpha_A_uncert}")
 print(f"[NII]/Halpha for source B: {NIIalpha_B} +- {NIIalpha_B_uncert}")
 
-#save 
 NIIalphas = {
     "A": {
         'NIIalpha': NIIalpha_A,
@@ -97,9 +161,8 @@ NIIalphas = {
 }
 with open('./output/NII/NII_Halpha_ratios.pkl', 'wb') as f:
     dill.dump(NIIalphas, f)
-
-
 """
+
 #BALMER DECREMENTS
 
 ab_A, ab_A_uncert = ratios(fluxes_A[0], fluxes_A[1], flux_uncerts_A[0], flux_uncerts_A[1])
@@ -154,5 +217,5 @@ print(ab_A / ab * 100)
 print(ab_B / ab * 100)
 print(gb_A / gb * 100)
 print(gb_B / gb * 100)
-"""
-# bolometric flux units:  ergs/s/cm^2 
+
+# bolometric flux units:  ergs/s/cm^2
