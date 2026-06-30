@@ -15,6 +15,7 @@ plt.ion()
 #lines = ["H_alpha", "[NII]6583", "[NII]6548"]
 lines = ["H_alpha", "H_beta", "H_gamma"]
 
+
 # import the gauss parameters from pkl
 with open('./output/balmer/ori_balmer_bestfit_gaussians.pkl', 'rb') as f:
     bestfit_model = dill.load(f)
@@ -120,6 +121,10 @@ for i in range(len(fluxes_A)):
         f"Flux for {lines[i]} for source B: {fluxes_B[i]:.3f} +/- {np.abs(flux_uncerts_B[i]):.3f} ergs/s/cm2"
     )
 
+
+
+
+
 """
 # OIII/Hbeta
 OIIIbeta_A, OIIIbeta_A_uncert = ratios(fluxes_A[2], fluxes_A[0],
@@ -136,7 +141,17 @@ OIIIbetas = {
     "B": {
         'OIIIbeta': OIIIbeta_B,
         'OIIIbeta_uncert': OIIIbeta_B_uncert
-    }
+    },
+     # keep fluxes too
+    'fluxes': {
+        'A': fluxes_A,
+        'B': fluxes_B,
+    },
+    'flux_uncerts':{
+        'A': flux_uncerts_A,
+        'B': flux_uncerts_B,
+    },
+    'units' : 'ergs / s / cm2'
 }
 with open('./output/OIII/OIII_Hbeta_ratios.pkl', 'wb') as f:
     dill.dump(OIIIbetas, f)
@@ -157,7 +172,17 @@ NIIalphas = {
      "B": {
         'NIIalpha': NIIalpha_B,
         'NIIalpha_uncert': NIIalpha_B_uncert
-    }
+    },
+     # keep fluxes too
+    'fluxes': {
+        'A': fluxes_A,
+        'B': fluxes_B,
+    },
+    'flux_uncerts':{
+        'A': flux_uncerts_A,
+        'B': flux_uncerts_B,
+    },
+    'units' : 'ergs / s / cm2'
 }
 with open('./output/NII/NII_Halpha_ratios.pkl', 'wb') as f:
     dill.dump(NIIalphas, f)
@@ -201,9 +226,13 @@ balmer_ratios = {
         'Hgamma_Hbeta': 0.47,
     },
     # keep fluxes too
-    'luminosities': {
+    'fluxes': {
         'A': fluxes_A,
         'B': fluxes_B,
+    },
+    'flux_uncerts':{
+        'A': flux_uncerts_A,
+        'B': flux_uncerts_B,
     },
     'units' : 'ergs / s / cm2'
 }

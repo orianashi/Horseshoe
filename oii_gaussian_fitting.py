@@ -69,12 +69,12 @@ ax.legend()
 gauss_guesses = {
     'A': {
         'z_guess': z_A,
-        'amplitudes': np.array([10, 8]),
+        'amplitudes': np.array([6.5, 10]),
         'stddev': np.array([3, 3])
     },
     'B': {
         'z_guess': z_B,
-        'amplitudes': np.array([5, 8]),
+        'amplitudes': np.array([7, 10]),
         'stddev': np.array([2, 3])
     }
 }
@@ -91,35 +91,28 @@ noise_wing = noise_clean[unblended]
 fitter = fitting.TRFLSQFitter(calc_uncertainties=True)
 
 # ==================
-# unblended-only fit anchored to OIII redshifts
+# unblended-only fit
 #
 # 3726A (source A) and 3729B (source B) overlap at ~9982 A and cannot be
 # reliably decomposed. Instead, fit only the two clean unblended lines:
 #   3729A on the red wing (~9990 A)
 #   3726B on the blue wing (~9975 A)
-# Means are fixed from [OIII]5007 bestfit redshifts. Blend region ignored entirely.
+# Blend region ignored entirely.
 # ==================
-with open('./output/OIII/OIII_Hbeta_bestfit_gaussians.pkl', 'rb') as f:
-    oiii_model = dill.load(f)
-
-# derive redshifts from [OIII]5007 (brightest line, indices 2=A, 5=B)
-oiii_rest = 5006.843
-z_A_oiii = oiii_model.mean_2.value / oiii_rest - 1
-z_B_oiii = oiii_model.mean_5.value / oiii_rest - 1
 
 # build a 2-Gaussian model: 3729A (red wing) + 3726B (blue wing)
 g_3729A = models.Gaussian1D(name="[OII]3729_A",
-                             mean=lines[1] * (1 + z_A_oiii),
+                             mean=lines[1] * (1 + z_A),
                              amplitude=gauss_guesses['A']['amplitudes'][1],
                              stddev=gauss_guesses['A']['stddev'][1])
 g_3726B = models.Gaussian1D(name="[OII]3726_B",
-                             mean=lines[0] * (1 + z_B_oiii),
+                             mean=lines[0] * (1 + z_B),
                              amplitude=gauss_guesses['B']['amplitudes'][0],
                              stddev=gauss_guesses['B']['stddev'][0])
 
-# fix means from OIII — only amplitudes and stddevs are free
-g_3729A.mean.fixed = True
-g_3726B.mean.fixed = True
+# bounds to keep means near their expected positions
+g_3729A.mean.bounds = (lines[1] * (1 + z_A) - 10, lines[1] * (1 + z_A) + 10)
+g_3726B.mean.bounds = (lines[0] * (1 + z_B) - 10, lines[0] * (1 + z_B) + 10)
 
 continuum_wing = models.Const1D(amplitude=np.nanmedian(flux_clean), name="continuum")
 wing_model = g_3729A + g_3726B + continuum_wing
@@ -142,7 +135,7 @@ ax2[0].plot(lam_model, wing_bestfit(lam_model), color="orange", label="wing fit"
 ax2[0].plot(lam_model, wing_bestfit[0](lam_model), color="blue", ls="--", alpha=0.7, label="[OII]3729_A")
 ax2[0].plot(lam_model, wing_bestfit[1](lam_model), color="red",  ls="-",  alpha=0.7, label="[OII]3726_B")
 ax2[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
-ax2[0].set_title(f"Wing-only fit  |  z_A = {z_A_oiii:.5f}  z_B = {z_B_oiii:.5f} (calculated from fitted mean of [OIII]5007)", fontsize=12)
+ax2[0].set_title(f"Wing-only fit  |  z_A = {z_A}  z_B = {z_B}", fontsize=12)
 ax2[0].legend(frameon=False)
 
 ax2[1].scatter(lam_wing, flux_wing - wing_bestfit(lam_wing),

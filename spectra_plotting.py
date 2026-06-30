@@ -62,7 +62,7 @@ lam_uvb_trim = lam_UVB[uvb_lam_mask]
 flux_uvb_trim = UVB_data[uvb_lam_mask]
 noise_uvb_trim = UVB_noise[uvb_lam_mask]
 
-lam_vis_mask = (lam_VIS >= 6000) & (lam_VIS <= 9800)
+lam_vis_mask = (lam_VIS >= 6000) & (lam_VIS <= lam_VIS[-1])
 lam_vis_trim = lam_VIS[lam_vis_mask]
 flux_vis_trim = VIS_data[lam_vis_mask]
 noise_vis_trim = VIS_noise[lam_vis_mask]
@@ -137,9 +137,9 @@ noise_nir_plot = noise_nir_quad if noise_in_quadrature else noise_nir_smooth
 z_A = 1.679
 z_B = 1.677  #this one makes the peaks line up better with the lines
 
-lam_uvb_rest = lam_uvb_trim / (1 + z_A)
-lam_vis_rest = lam_vis_trim / (1 + z_A)
-lam_nir_rest = lam_nir_trim / (1 + z_A)
+lam_uvb_rest = lam_uvb_trim / (1 + z_B)
+lam_vis_rest = lam_vis_trim / (1 + z_B)
+lam_nir_rest = lam_nir_trim / (1 + z_B)
 
 #load in reference
 horseshoe_ref = np.genfromtxt('./absorption_wls/horseshoe_atoms.dat',
