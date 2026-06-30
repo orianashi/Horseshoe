@@ -61,14 +61,20 @@ sigma_instr = 17569 / (5600 * 2.355)
 gauss_guesses = {
     'gal': {
         'z_guess': z_B,
-        'amplitude': 10,
+        'amplitude': 12,
         'stddev': sigma_instr,
         'mean_range': 5,
     },
-    'outflow': {
+    'blue_outflow': {
         'z_guess': z_B + 0.00031,
-        'amplitude': 11.7,
+        'amplitude': 9,
         'stddev': 4.3,
+        'mean_range': 8,
+    },
+    'red_outflow': {
+        'z_guess': z_B - 0.00085,
+        'amplitude': 3,
+        'stddev': 2.5,
         'mean_range': 8,
     }
 }
@@ -85,7 +91,8 @@ ax.fill_between(lam_clean,
 ax.set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
 ax.set_ylabel("Normalised Flux [ergs/s/cm2/AA]", fontsize=15)
 ax.axvline(line * (1+gauss_guesses['gal']['z_guess']), color='red', ls='--', alpha=0.5, lw=0.8)
-ax.axvline(line * (1+gauss_guesses['outflow']['z_guess']), color='red', ls='--', alpha=0.5, lw=0.8)
+ax.axvline(line * (1+gauss_guesses['blue_outflow']['z_guess']), color='red', ls='--', alpha=0.5, lw=0.8)
+ax.axvline(line * (1+gauss_guesses['red_outflow']['z_guess']), color='red', ls='--', alpha=0.5, lw=0.8)
 ax.legend()
 plt.show()
 
@@ -123,18 +130,20 @@ lam_fit = lam_clean[source_A_mask]
 flux_fit = flux_clean[source_A_mask]
 noise_fit = noise_clean[source_A_mask]
 
+
 # ==================
 # initialize!
 # ==================
 gs_B_gal = create_gaussians("gal")
-gs_B_outflow = create_gaussians("outflow")  
+gs_B_blue_outflow = create_gaussians("blue_outflow")  
+gs_B_red_outflow = create_gaussians("red_outflow") 
 
 # also make a continuum
 continuum = models.Const1D(amplitude=np.nanmedian(flux_clean),
                            name="continuum")  #makes a flat baseline
 
 # combine into a compound model 
-concat_gaussians = gs_B_gal + gs_B_outflow + [continuum]
+concat_gaussians = gs_B_gal + gs_B_blue_outflow + gs_B_red_outflow + [continuum]
 compound_model = reduce(operator.add, concat_gaussians)
 
 # ==================
