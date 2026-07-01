@@ -19,20 +19,20 @@ z_B = 1.677
 
 # balmer emission lines in air
 # NOTE: if you change the lines, make sure to edit the amplitude guesses and file save!
-
+"""
 # OIII / HBETA
 lines = [4861.333, 4958.911, 5006.843]
 line_names = ["Hbeta", "[OIII]4959", "[OIII]5007"]
+"""
 """
 # NII / HALPHA
 lines = [6562.819, 6583.460, 6548.050]
 line_names = ["H_alpha", "[NII]6583", "[NII]6548.050"]
 """
-"""
+
 # BALMER DECREMENTS
 lines = [6562.819, 4861.33, 4340.47]
 line_names = ["H_alpha", "H_beta", "H_gamma"]
-"""
 
 #spectrum
 spec_lib = "./Data/X-Shooter/1D/stacked_NIR.fits"
@@ -85,12 +85,12 @@ ax.legend()
 gauss_guesses = {
     'A': {
         'z_guess': z_A,
-        'amplitudes': np.array([20, 35, 100]),
+        'amplitudes': np.array([40, 15, 10]),
         'stddev': np.array([3, 1.5, 1.5])
     },
     'B': {
         'z_guess': z_B,
-        'amplitudes': np.array([10, 15, 45]),
+        'amplitudes': np.array([20, 8, 5]),
         'stddev': np.array([3, 1.5, 1.5])
     }
 }
@@ -251,6 +251,8 @@ ax[1].legend(frameon=True)
 plt.show()
 
 # save
+"""
 fig.savefig('./output/OIII/OIII_Hbeta_bestfit_gaussians.png')
 with open('./output/OIII/OIII_Hbeta_bestfit_gaussians.pkl', 'wb') as f:
     dill.dump(bestfit_model, f)
+"""

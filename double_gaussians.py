@@ -51,9 +51,8 @@ lam_clean = lam_trim[
 flux_clean = flux_trim[~bad]
 noise_clean = noise_trim[~bad]
 
-
 # =================
-# Initial guesses for the galaxy and outflow 
+# Initial guesses for the galaxy and outflow
 # =================
 # X-Shooter NIR resolution at ~17569 AA: R~5600 -> sigma_instr = lam/(R*2.355) ~1.33 AA
 sigma_instr = 17569 / (5600 * 2.355)
@@ -63,18 +62,21 @@ gauss_guesses = {
         'z_guess': z_B,
         'amplitude': 12,
         'stddev': sigma_instr,
+        'stddev_bounds': (sigma_instr, 2.5),
         'mean_range': 5,
     },
     'blue_outflow': {
         'z_guess': z_B + 0.00031,
         'amplitude': 9,
         'stddev': 4.3,
+        'stddev_bounds': (3.0, 40.0),
         'mean_range': 8,
     },
     'red_outflow': {
         'z_guess': z_B - 0.00085,
         'amplitude': 3,
         'stddev': 2.5,
+        'stddev_bounds': (sigma_instr, 4.0),
         'mean_range': 8,
     }
 }
@@ -90,15 +92,27 @@ ax.fill_between(lam_clean,
                 label="noise")
 ax.set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
 ax.set_ylabel("Normalised Flux [ergs/s/cm2/AA]", fontsize=15)
-ax.axvline(line * (1+gauss_guesses['gal']['z_guess']), color='red', ls='--', alpha=0.5, lw=0.8)
-ax.axvline(line * (1+gauss_guesses['blue_outflow']['z_guess']), color='red', ls='--', alpha=0.5, lw=0.8)
-ax.axvline(line * (1+gauss_guesses['red_outflow']['z_guess']), color='red', ls='--', alpha=0.5, lw=0.8)
+ax.axvline(line * (1 + gauss_guesses['gal']['z_guess']),
+           color='red',
+           ls='--',
+           alpha=0.5,
+           lw=0.8)
+ax.axvline(line * (1 + gauss_guesses['blue_outflow']['z_guess']),
+           color='red',
+           ls='--',
+           alpha=0.5,
+           lw=0.8)
+ax.axvline(line * (1 + gauss_guesses['red_outflow']['z_guess']),
+           color='red',
+           ls='--',
+           alpha=0.5,
+           lw=0.8)
 ax.legend()
 plt.show()
 
 
 # =================
-# Create gaussian function 
+# Create gaussian function
 # =================
 def create_gaussians(source_label):
     gauss_params = gauss_guesses[source_label]
@@ -106,23 +120,25 @@ def create_gaussians(source_label):
     # create gaussians for the emission lines of a source.
     # use a python LIST (not a numpy array) so that gs_A + gs_B + [continuum] concatenates
     # the components; numpy arrays would add element-wise and scramble the compound model.
-    
+
     gaussians = []
     gaussians.append(
         models.Gaussian1D(name=f'{line_name}_{source_label}',
-                            mean=line * (gauss_params['z_guess'] + 1),
-                            amplitude=gauss_params['amplitude'],
-                            stddev=gauss_params['stddev']))
+                          mean=line * (gauss_params['z_guess'] + 1),
+                          amplitude=gauss_params['amplitude'],
+                          stddev=gauss_params['stddev']))
 
     # set bounds for where the mean of the reference line can be
     ref_mean_guess = line * (1 + gauss_params["z_guess"])
     gaussians[0].amplitude.bounds = (0, None)
+    gaussians[0].stddev.bounds = gauss_params['stddev_bounds']
     gaussians[0].mean.bounds = (ref_mean_guess - gauss_params['mean_range'],
                                 ref_mean_guess + gauss_params['mean_range'])
     return gaussians
 
+
 # ==================
-# mask out unhelpful areas 
+# mask out unhelpful areas
 # ==================
 # mask out source A's contaminating emission line
 source_A_mask = (lam_clean < 17575) | (lam_clean > 17600)
@@ -130,20 +146,21 @@ lam_fit = lam_clean[source_A_mask]
 flux_fit = flux_clean[source_A_mask]
 noise_fit = noise_clean[source_A_mask]
 
-
 # ==================
 # initialize!
 # ==================
 gs_B_gal = create_gaussians("gal")
-gs_B_blue_outflow = create_gaussians("blue_outflow")  
-gs_B_red_outflow = create_gaussians("red_outflow") 
+gs_B_blue_outflow = create_gaussians("blue_outflow")
+gs_B_red_outflow = create_gaussians("red_outflow")
 
 # also make a continuum
 continuum = models.Const1D(amplitude=np.nanmedian(flux_clean),
                            name="continuum")  #makes a flat baseline
 
-# combine into a compound model 
-concat_gaussians = gs_B_gal + gs_B_blue_outflow + gs_B_red_outflow + [continuum]
+# combine into a compound model
+concat_gaussians = gs_B_gal + gs_B_blue_outflow + gs_B_red_outflow + [
+    continuum 
+]
 compound_model = reduce(operator.add, concat_gaussians)
 
 # ==================
@@ -180,8 +197,24 @@ ax[0].fill_between(lam_clean,
 ax[0].plot(lam_model,
            bestfit_model(lam_model),
            color="orange",
-           label="Bestfit",
-           ds='steps')
+           label="Bestfit total",
+           lw=2)
+
+# individual components
+cont_m = bestfit_model[3] 
+colors = {
+    "gal": "purple",
+    "blue_outflow": "royalblue",
+    "red_outflow": "crimson"
+}
+for i, label in enumerate(["gal", "blue_outflow","red_outflow" ]):  #,"red_outflow"
+    comp = bestfit_model[i]
+    ax[0].plot(lam_model,
+               comp(lam_model) + cont_m(lam_model),
+               color=colors[label],
+               ls="--",
+               lw=1.5,
+               label=f"{label}  σ={comp.stddev.value:.2f} AA")
 
 # Initial guess
 ax[0].plot(lam_model,
@@ -206,10 +239,12 @@ ax[1].scatter(
     label="flux - model residuals",
     alpha=0.5,
 )
+ax[1].axhline(0, ls='--', alpha=0.4)
 ax[1].legend(frameon=True)
 plt.show()
 
 # save
-fig.savefig('./output/double_gaussians/Hbeta_double_gaussians_3.png')
-with open('./output/double_gaussians/Hbeta_double_gaussians_3.pkl', 'wb') as f:
+fig.savefig('./output/double_gaussians/Hbeta_triple_gaussians_stddev.png')
+with open('./output/double_gaussians/Hbeta_triple_gaussians_stddev.pkl',
+          'wb') as f:
     dill.dump(bestfit_model, f)

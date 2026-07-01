@@ -1,6 +1,7 @@
 import dill
 import numpy as np
 import pandas as pd
+import diagnostics as diag
 
 # ==================
 # helpers
@@ -92,6 +93,18 @@ aunc = get_std(m_nii, 'amplitude_1');  sunc = get_std(m_nii, 'stddev_1')
 flux, flux_unc = integrate(amp, std, aunc, sunc)
 rows_A.append(row('[NII]6583', flux, flux_unc, std, sunc))
 
+# diagnostic ratios (from diagnostics.py)
+rows_A.append(row('R23', diag.R23_A, diag.R23_A_err, np.nan, np.nan,
+                  'ratio, not a flux: ([OII]3726+[OII]3729+[OIII]4959+[OIII]5007)/Hbeta'))
+rows_A.append(row('R23_KK04', diag.kR23_A, diag.kR23_A_err, np.nan, np.nan,
+                  'ratio, not a flux: ([OII]3726+[OIII]4959+[OIII]5007)/Hbeta (Kewley & Dopita 2002)'))
+rows_A.append(row('N2', diag.NIIalphas['A']['NIIalpha'], diag.NIIalphas['A']['NIIalpha_uncert'], np.nan, np.nan,
+                  'ratio, not a flux: [NII]6583/Halpha'))
+rows_A.append(row('O3N2', diag.o3n2A, diag.o3n2A_err, np.nan, np.nan,
+                  'ratio, not a flux: ([OIII]5007/Hbeta) / ([NII]6583/Halpha)'))
+rows_A.append(row('[OIII]/Hbeta', diag.OIIIbetas['A']['OIIIbeta'], diag.OIIIbetas['A']['OIIIbeta_uncert'], np.nan, np.nan,
+                  'ratio, not a flux: [OIII]5007/Hbeta'))
+
 # ==================
 # source B
 # ==================
@@ -147,14 +160,28 @@ aunc = get_std(m_nii, 'amplitude_4');  sunc = get_std(m_nii, 'stddev_4')
 flux, flux_unc = integrate(amp, std, aunc, sunc)
 rows_B.append(row('[NII]6583', flux, flux_unc, std, sunc))
 
+# diagnostic ratios (from diagnostics.py)
+rows_B.append(row('R23', diag.R23_B, diag.R23_B_err, np.nan, np.nan,
+                  'ratio, not a flux: ([OII]3726+[OII]3729+[OIII]4959+[OIII]5007)/Hbeta'))
+rows_B.append(row('R23_KK04', diag.kR23_B, diag.kR23_B_err, np.nan, np.nan,
+                  'ratio, not a flux: ([OII]3726+[OIII]4959+[OIII]5007)/Hbeta (Kewley & Dopita 2002)'))
+rows_B.append(row('N2', diag.NIIalphas['B']['NIIalpha'], diag.NIIalphas['B']['NIIalpha_uncert'], np.nan, np.nan,
+                  'ratio, not a flux: [NII]6583/Halpha'))
+rows_B.append(row('O3N2', diag.o3n2B, diag.o3n2B_err, np.nan, np.nan,
+                  'ratio, not a flux: ([OIII]5007/Hbeta) / ([NII]6583/Halpha)'))
+rows_B.append(row('[OIII]/Hbeta', diag.OIIIbetas['B']['OIIIbeta'], diag.OIIIbetas['B']['OIIIbeta_uncert'], np.nan, np.nan,
+                  'ratio, not a flux: [OIII]5007/Hbeta'))
+
 # ==================
 # save
 # ==================
-pd.DataFrame(rows_A).to_csv('./output/emission_lines_A.csv', index=False)
-pd.DataFrame(rows_B).to_csv('./output/emission_lines_B.csv', index=False)
+df_A = pd.DataFrame(rows_A).round(3)
+df_B = pd.DataFrame(rows_B).round(3)
+df_A.to_csv('./output/emission_lines_A.csv', index=False)
+df_B.to_csv('./output/emission_lines_B.csv', index=False)
 
 print("Source A:")
-print(pd.DataFrame(rows_A).to_string(index=False))
+print(df_A.to_string(index=False))
 print()
 print("Source B:")
-print(pd.DataFrame(rows_B).to_string(index=False))
+print(df_B.to_string(index=False))
