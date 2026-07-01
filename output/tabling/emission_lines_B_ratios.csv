@@ -1,0 +1,8 @@
+ratio       , value  , uncert
+N2          ,   0.01 ,   0.007
+O3N2        , 480.063, 328.851
+Halpha/Hbeta,   3.188,   0.27
+Hgamma/Hbeta,   0.632,   0.109
+R23         ,   7.331,   1.119
+kk04_R23    ,   6.715,   1.023
+[OIII]/Hbeta,   4.73 ,   0.72

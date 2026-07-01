@@ -1,0 +1,10 @@
+line      , flux_ergs_s_cm2, flux_uncert, width_AA, width_uncert_AA, notes
+[OII]3726 , 18.199         , 2.112      ,    1.709,           0.165, directly fit
+[OII]3729 , 27.298         , 3.167      ,         ,                , derived from [OII]3726 * 1.5 (low-density limit)
+Hgamma    , 26.369         , 3.985      ,    2.54 ,           0.302, from joint Balmer fit
+Hbeta     , 41.699         , 3.492      ,    2.371,           0.165, from joint Balmer fit
+[OIII]4959, 69.826         , 2.955      ,    2.603,           0.082, 
+[OIII]5007, 209.717        , 3.157      ,    2.588,           0.032, 
+[NII]6548 , -0.834         , -0.88      ,    0.84 ,           0.659, 
+Halpha    , 132.935        , 1.764      ,    3.563,           0.036, from joint Balmer fit
+[NII]6583 , 1.326          , 0.885      ,    0.524,           0.255, 

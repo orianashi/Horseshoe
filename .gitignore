@@ -16,7 +16,6 @@ venv/
 
 # Large or generated data (keep code under version control)
 Data/
-output/
 Documents/
 
 # FITS and other large binaries
