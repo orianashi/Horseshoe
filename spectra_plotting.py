@@ -67,7 +67,7 @@ lam_vis_trim = lam_VIS[lam_vis_mask]
 flux_vis_trim = VIS_data[lam_vis_mask]
 noise_vis_trim = VIS_noise[lam_vis_mask]
 
-lam_nir_mask = (lam_NIR >= lam_NIR[0]) & (lam_NIR <= 18000)
+lam_nir_mask = (lam_NIR >= lam_NIR[0]) & (lam_NIR <= 18083)
 lam_nir_trim = lam_NIR[lam_nir_mask]
 flux_nir_trim = NIR_data[lam_nir_mask]
 noise_nir_trim = NIR_noise[lam_nir_mask]

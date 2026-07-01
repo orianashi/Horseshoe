@@ -22,7 +22,8 @@ with open('./output/NII/NII_Halpha_ratios.pkl', 'rb') as f_NII:
     NIIalphas = dill.load(f_NII)
 with open('./output/OII/OII_fluxes.pkl', "rb") as f_OII:
     OIIfluxes = dill.load(f_OII)
-
+with open('./output/balmer/balmer_decrement_ratios.pkl', 'rb') as f_balmer:
+    balmer_ratios = dill.load(f_balmer)
 
 # define function to calculate log values and uncertainty
 def log_uncert(ratio, uncert):
@@ -290,3 +291,56 @@ fig.tight_layout()
 
 fig.savefig('./output/diagnostics/bpt.png')
 plt.show()
+
+
+# ====================================
+# Saving all the ratios 
+# ====================================
+ratios_A = {
+    'N2':  NIIalphas['A']['NIIalpha'], 
+    'N2_err': NIIalphas['A']['NIIalpha_uncert'],
+
+    'O3N2': o3n2A,
+    'O3N2_err': o3n2A_err,
+
+    'Halpha/Hbeta': balmer_ratios['A']['Halpha_Hbeta'], 
+    'Halpha/Hbeta_err': balmer_ratios['A']['Halpha_Hbeta_1sig'],
+
+    'Hgamma/Hbeta': balmer_ratios['A']['Hgamma_Hbeta'],
+    'Hgamma/Hbeta_err': balmer_ratios['A']['Hgamma_Hbeta_1sig'],
+
+    'R23': R23_A, 
+    'R23_err': R23_A_err,
+
+    'kk04_R23': kR23_A, 
+    'kk04_R23_err': kR23_A_err, 
+
+    '[OIII]/Hbeta': OIIIbetas['A']['OIIIbeta'],
+    '[OIII]/Hbeta_err': OIIIbetas['A']['OIIIbeta_uncert']
+}
+ratios_B = {
+    'N2':  NIIalphas['B']['NIIalpha'], 
+    'N2_err': NIIalphas['B']['NIIalpha_uncert'],
+
+    'O3N2': o3n2B,
+    'O3N2_err': o3n2B_err,
+
+    'Halpha/Hbeta': balmer_ratios['B']['Halpha_Hbeta'], 
+    'Halpha/Hbeta_err': balmer_ratios['B']['Halpha_Hbeta_1sig'],
+
+    'Hgamma/Hbeta': balmer_ratios['B']['Hgamma_Hbeta'],
+    'Hgamma/Hbeta_err': balmer_ratios['B']['Hgamma_Hbeta_1sig'],
+
+    'R23': R23_B, 
+    'R23_err': R23_B_err,
+
+    'kk04_R23': kR23_B, 
+    'kk04_R23_err': kR23_B_err, 
+
+    '[OIII]/Hbeta': OIIIbetas['B']['OIIIbeta'],
+    '[OIII]/Hbeta_err': OIIIbetas['B']['OIIIbeta_uncert']
+}
+with open('./output/tabling/A_ratios.pkl', 'wb') as fA:
+    dill.dump(ratios_A, fA)
+with open('./output/tabling/B_ratios.pkl', 'wb') as fB:
+    dill.dump(ratios_B, fB)
