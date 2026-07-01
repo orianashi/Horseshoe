@@ -21,3 +21,6 @@ Documents/
 # FITS and other large binaries
 *.fits
 *.fit
+
+# other
+claude_adventure/

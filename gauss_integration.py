@@ -11,9 +11,9 @@ plt.ion()
 # NOTE : flux units are in ergs/s/cm^2 /Angstrom
 
 # NOTE: if you change these, make sure to update the filename ratios to calcualte what you want
-#lines = ["Hbeta", "[OIII]4959", "[OIII]5007"]
+lines = ["Hbeta", "[OIII]4959", "[OIII]5007"]
 #lines = ["H_alpha", "[NII]6583", "[NII]6548"]
-lines = ["H_alpha", "H_beta", "H_gamma"]
+#lines = ["H_alpha", "H_beta", "H_gamma"]
 
 
 # import the gauss parameters from pkl
@@ -125,7 +125,7 @@ for i in range(len(fluxes_A)):
 
 
 
-"""
+
 # OIII/Hbeta
 OIIIbeta_A, OIIIbeta_A_uncert = ratios(fluxes_A[2], fluxes_A[0],
                                        flux_uncerts_A[2], flux_uncerts_A[0])
@@ -155,7 +155,7 @@ OIIIbetas = {
 }
 with open('./output/OIII/OIII_Hbeta_ratios.pkl', 'wb') as f:
     dill.dump(OIIIbetas, f)
-"""
+
 
 """
 # NII6584/Halpha.
@@ -186,6 +186,7 @@ NIIalphas = {
 }
 with open('./output/NII/NII_Halpha_ratios.pkl', 'wb') as f:
     dill.dump(NIIalphas, f)
+"""
 """
 
 #BALMER DECREMENTS
@@ -246,5 +247,5 @@ print(ab_A / ab * 100)
 print(ab_B / ab * 100)
 print(gb_A / gb * 100)
 print(gb_B / gb * 100)
-
+"""
 # bolometric flux units:  ergs/s/cm^2

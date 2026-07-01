@@ -15,8 +15,8 @@ plt.ion()
 # ==================
 
 # redshift
-z_A = 1.679
 z_B = 1.677
+z_A = 1.679
 
 # emission lines - for the sake of fitting (since I don't know which is the actual galaxy vs outflow, should i not tie?)
 line = 6562.819
@@ -62,22 +62,29 @@ gauss_guesses = {
     'gal': {
         'z_guess': z_B,
         'amplitude': 12,
-        'stddev': sigma_instr,
+        'stddev': 4,
         'stddev_bounds': (sigma_instr, 40),
         'mean_range': 5,
     },
     'red_outflow': {
         'z_guess': z_B + 0.00037,
-        'amplitude': 9,
+        'amplitude': 4,
         'stddev': 4.3,
-        'stddev_bounds': (3.0, 40.0),
+        'stddev_bounds': (sigma_instr, 40.0),
         'mean_range': 5,
     },
-        'A': {
+    'blue_outflow': {
+        'z_guess': z_B - 0.0009,
+        'amplitude': 1,
+        'stddev': 1.5,
+        'stddev_bounds': (sigma_instr, 40),
+        'mean_range': 4,
+    },
+    'A': {
         'z_guess': z_A,
         'amplitude': 40,
         'stddev': 3,
-        'stddev_bounds': (3.0, 40.0),
+        'stddev_bounds': (sigma_instr, 40),
         'mean_range': 5,
     }
 }
@@ -94,6 +101,11 @@ ax.fill_between(lam_clean,
 ax.set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
 ax.set_ylabel("Normalised Flux [ergs/s/cm2/AA]", fontsize=15)
 ax.axvline(line * (1 + gauss_guesses['gal']['z_guess']),
+           color='red',
+           ls='--',
+           alpha=0.5,
+           lw=0.8)
+ax.axvline(line * (1 + gauss_guesses['blue_outflow']['z_guess']),
            color='red',
            ls='--',
            alpha=0.5,
@@ -143,10 +155,12 @@ lam_fit = lam_clean[source_A_mask]
 flux_fit = flux_clean[source_A_mask]
 noise_fit = noise_clean[source_A_mask]
 """
+
 # ==================
 # initialize!
 # ==================
 gs_B_gal = create_gaussians("gal")
+gs_B_blue_outflow = create_gaussians("blue_outflow")
 gs_B_red_outflow = create_gaussians("red_outflow")
 gs_A = create_gaussians('A')
 
@@ -155,7 +169,7 @@ continuum = models.Const1D(amplitude=np.nanmedian(flux_clean),
                            name="continuum")  #makes a flat baseline
 
 # combine into a compound model
-concat_gaussians = gs_B_gal +  gs_B_red_outflow +gs_A + [
+concat_gaussians = gs_B_gal + gs_B_blue_outflow + gs_B_red_outflow + gs_A + [
     continuum 
 ]
 compound_model = reduce(operator.add, concat_gaussians)
@@ -198,13 +212,14 @@ ax[0].plot(lam_model,
            lw=2)
 
 # individual components
-cont_m = bestfit_model[3] 
+cont_m = bestfit_model[4] 
 colors = {
     "gal": "purple",
+    "blue_outflow": "royalblue",
     "red_outflow": "crimson",
-    'A':'teal'
+    "A": "teal"
 }
-for i, label in enumerate(["gal", "red_outflow" , 'A']):
+for i, label in enumerate(["gal", "blue_outflow","red_outflow", "A" ]): 
     comp = bestfit_model[i]
     ax[0].plot(lam_model,
                comp(lam_model) + cont_m(lam_model),
@@ -241,7 +256,7 @@ ax[1].legend(frameon=True)
 plt.show()
 
 # save
-fig.savefig('./output/double_gaussians/Halpha_double_gaussians_sourceA_bounded.png')
-with open('./output/double_gaussians/Halpha_double_gaussians_sourceA_bounded.pkl',
+fig.savefig('./output/double_gaussians/Halpha_triple_gaussians_sourceA_bounded.png')
+with open('./output/double_gaussians/Halpha_triple_gaussians_sourceA_bounded.pkl',
           'wb') as f:
     dill.dump(bestfit_model, f)

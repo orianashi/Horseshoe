@@ -242,8 +242,6 @@ def bpt_line(log_NIIalpha, z):
     return 0.61 / denom + 1.2 + 0.03 * z
 
 
-asymptote = 0.02 + 0.1833 * z_B
-
 x_left = min(log_NIIalpha_A - log_NIIalpha_A_uncert,
              log_NIIalpha_B - log_NIIalpha_B_uncert) - 0.15
 x = np.linspace(x_left, 0.2, 1000)
@@ -292,6 +290,20 @@ fig.tight_layout()
 fig.savefig('./output/diagnostics/bpt.png')
 plt.show()
 
+# ====================================
+# E(B_V) = 1.97 log10(Halpha/Hbeta / 2.86)
+# ====================================
+log_arg_A = balmer_ratios['A']['Halpha_Hbeta'] / 2.86
+log_arg_A_err = balmer_ratios['A']['Halpha_Hbeta_1sig'] / 2.86
+log10E_A, log10E_A_err = log_uncert(log_arg_A, log_arg_A_err)
+E_BV_A = 1.97 * log10E_A
+E_BV_A_err = 1.97 * log10E_A_err
+
+log_arg_B = balmer_ratios['B']['Halpha_Hbeta'] / 2.86
+log_arg_B_err = balmer_ratios['B']['Halpha_Hbeta_1sig'] / 2.86
+log10E_B, log10E_B_err = log_uncert(log_arg_B, log_arg_B_err)
+E_BV_B = 1.97 * log10E_B
+E_BV_B_err = 1.97 * log10E_B_err
 
 # ====================================
 # Saving all the ratios 
@@ -308,6 +320,9 @@ ratios_A = {
 
     'Hgamma/Hbeta': balmer_ratios['A']['Hgamma_Hbeta'],
     'Hgamma/Hbeta_err': balmer_ratios['A']['Hgamma_Hbeta_1sig'],
+
+    'E(B-V)': E_BV_A,
+    'E(B-V)_err':  E_BV_A_err,
 
     'R23': R23_A, 
     'R23_err': R23_A_err,
@@ -330,6 +345,9 @@ ratios_B = {
 
     'Hgamma/Hbeta': balmer_ratios['B']['Hgamma_Hbeta'],
     'Hgamma/Hbeta_err': balmer_ratios['B']['Hgamma_Hbeta_1sig'],
+
+    'E(B-V)': E_BV_B,
+    'E(B-V)_err':  E_BV_B_err,
 
     'R23': R23_B, 
     'R23_err': R23_B_err,

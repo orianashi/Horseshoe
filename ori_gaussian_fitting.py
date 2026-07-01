@@ -17,9 +17,10 @@ plt.ion()
 z_A = 1.679
 z_B = 1.677
 
+"""
 # balmer emission lines in air
 # NOTE: if you change the lines, make sure to edit the amplitude guesses and file save!
-"""
+
 # OIII / HBETA
 lines = [4861.333, 4958.911, 5006.843]
 line_names = ["Hbeta", "[OIII]4959", "[OIII]5007"]
@@ -33,6 +34,7 @@ line_names = ["H_alpha", "[NII]6583", "[NII]6548.050"]
 # BALMER DECREMENTS
 lines = [6562.819, 4861.33, 4340.47]
 line_names = ["H_alpha", "H_beta", "H_gamma"]
+
 
 #spectrum
 spec_lib = "./Data/X-Shooter/1D/stacked_NIR.fits"
