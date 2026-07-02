@@ -31,14 +31,20 @@ lines = [6562.819, 6583.460, 6548.050]
 line_names = ["H_alpha", "[NII]6583", "[NII]6548.050"]
 """
 
+# C III] 1907, 1909
+lines = [1906.6, 1908.7]
+line_names = [ 'C III] 1907', 'CIII] 1909']
+
+"""
 # BALMER DECREMENTS
 lines = [6562.819, 4861.33, 4340.47]
 line_names = ["H_alpha", "H_beta", "H_gamma"]
-
+"""
 
 #spectrum
-spec_lib = "./Data/X-Shooter/1D/stacked_NIR.fits"
-with fits.open(spec_lib.format(arm="NIR")) as hdu:
+#spec_lib = "./Data/X-Shooter/1D/stacked_NIR.fits"
+spec_lib = "./Data/X-Shooter/1D/stacked_UVB.fits"
+with fits.open(spec_lib.format(arm="UVB")) as hdu:
     h = hdu[1].header
     flux_data = hdu[1].data  #flux
     noise_data = hdu[4].data  #noise
@@ -87,13 +93,13 @@ ax.legend()
 gauss_guesses = {
     'A': {
         'z_guess': z_A,
-        'amplitudes': np.array([40, 15, 10]),
-        'stddev': np.array([3, 1.5, 1.5])
+        'amplitudes': np.array([1.8, 1.3]),
+        'stddev': np.array([1.4, 1.4])
     },
     'B': {
         'z_guess': z_B,
-        'amplitudes': np.array([20, 8, 5]),
-        'stddev': np.array([3, 1.5, 1.5])
+        'amplitudes': np.array([1.3, 1.6]),
+        'stddev': np.array([1.3, 1.4])
     }
 }
 
@@ -235,6 +241,29 @@ ax[0].plot(lam_model,
            alpha=0.5,
            ls=":")
 
+
+# PLOT THE INDIVIDUAL COMPONENTS (continuum added back so they sit on the baseline)
+continuum_model = bestfit_model[4](lam_model)
+ax[0].plot(lam_model,
+           bestfit_model[0](lam_model) + continuum_model,
+           color="purple",
+           ls=":",
+           label="1907A / 1909A")
+ax[0].plot(lam_model,
+           bestfit_model[1](lam_model) + continuum_model,
+           color="purple",
+           ls=":")
+ax[0].plot(lam_model,
+           bestfit_model[2](lam_model) + continuum_model,
+           color="red",
+           ls=":",
+           label="1907B / 1909_B")
+ax[0].plot(lam_model,
+           bestfit_model[3](lam_model) + continuum_model,
+           color="red",
+           ls=":")
+
+
 # Set the x and y labels and add a legend
 ax[0].set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
 ax[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
@@ -243,18 +272,22 @@ ax[0].legend(frameon=False)
 # plot the residuals (data - model) in the second subplot
 ax[1].scatter(
     lam_clean,
-    flux_clean - bestfit_model(lam_clean),
+    (flux_clean - bestfit_model(lam_clean))/noise_clean,
     s=10,
     c="orange",
-    label="flux - model residuals",
+    label="(flux - model)/noise",
     alpha=0.5,
 )
+ax[1].axhline(1, ls = '-.', lw = 0.5, c = 'red')
+ax[1].axhline(2, ls = '--', lw = 0.5, c= 'red')
+ax[1].axhline(-1, ls = '-.', lw = 0.5, c = 'red')
+ax[1].axhline(-2, ls = '--', lw = 0.5, c= 'red')
 ax[1].legend(frameon=True)
 plt.show()
 
 # save
-"""
-fig.savefig('./output/OIII/OIII_Hbeta_bestfit_gaussians.png')
-with open('./output/OIII/OIII_Hbeta_bestfit_gaussians.pkl', 'wb') as f:
+
+fig.savefig('./output/CIII/CIII_bestfit_gaussians_1.png')
+with open('./output/CIII/CIII_bestfit_gaussians_1.pkl', 'wb') as f:
     dill.dump(bestfit_model, f)
-"""
+
