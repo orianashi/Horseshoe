@@ -19,8 +19,8 @@ z_B = 1.677
 z_A = 1.679
 
 # emission lines - for the sake of fitting (since I don't know which is the actual galaxy vs outflow, should i not tie?)
-line =  4340.471
-line_name = 'Hgamma'
+line =  6562.819
+line_name = 'Halpha'
 
 #spectrum
 spec_lib = "./Data/X-Shooter/1D/stacked_NIR.fits"
@@ -55,10 +55,12 @@ noise_clean = noise_trim[~bad]
 # =================
 # mask out the noise spike sitting between the A and B peaks
 # =================
+"""
 noise_peak_mask = (lam_clean < 11622.6) | (lam_clean > 11624.4)
 lam_fit = lam_clean[noise_peak_mask]
 flux_fit = flux_clean[noise_peak_mask]
 noise_fit = noise_clean[noise_peak_mask]
+"""
 
 # =================
 # Initial guesses for the galaxy and outflow
@@ -84,13 +86,6 @@ gauss_guesses = {
         'mean_range': 3,
     },
     '3': {
-        'z_guess' : z_A - 0.0005,
-        'amplitude': 5,
-        'stddev': 1.5,
-        'stddev_bounds': (0.75, 5),
-        'amplitude_bound': (1, 15),
-        'mean_range': 3  },  
-    '4': {
         'z_guess': z_B + 0.0004,
         'amplitude': 2,
         'stddev': 2.2,
@@ -98,15 +93,15 @@ gauss_guesses = {
         'amplitude_bound': (1, None),
         'mean_range': 1.5,
     },
-    '5': {
+    '4': {
         'z_guess': z_B,
         'amplitude': 8,
         'stddev': 2.2,
-        'stddev_bounds': (0.75, 3),
+        'stddev_bounds': (sigma_instr, 3),
         'amplitude_bound': (1, None),
         'mean_range': 5,
     },
-    '6': {
+    '5': {
         'z_guess' : z_B - 0.0005,
         'amplitude': 5,
         'stddev': 2,
@@ -155,13 +150,8 @@ ax.axvline(line * (1 + gauss_guesses['5']['z_guess']),
            ls='--',
            alpha=0.5,
            lw=0.8)
-ax.axvline(line * (1 + gauss_guesses['5']['z_guess']),
-           color='red',
-           ls='--',
-           alpha=0.5,
-           lw=0.8)
 
-ax.axvspan(11622.6, 11624.4, color='pink', alpha=0.2, label='masked noise')
+#ax.axvspan(11622.6, 11624.4, color='pink', alpha=0.2, label='masked noise')
 
 ax.legend()
 plt.show()
@@ -202,14 +192,13 @@ gs_2 = create_gaussians("2")
 gs_3 = create_gaussians("3")
 gs_4 = create_gaussians("4")
 gs_5 = create_gaussians("5")
-gs_6 = create_gaussians("6")
 
 # also make a continuum
-continuum = models.Const1D(amplitude=np.nanmedian(flux_fit),
+continuum = models.Const1D(amplitude=np.nanmedian(flux_clean),
                            name="continuum")  #makes a flat baseline
 
 # combine into a compound model
-concat_gaussians = gs_1 + gs_2 + gs_3  + gs_4 + gs_5 + gs_6 + [
+concat_gaussians = gs_1 + gs_2 + gs_3  + gs_4 + gs_5 + [
     continuum
 ]
 compound_model = reduce(operator.add, concat_gaussians)
@@ -222,9 +211,9 @@ fitter = fitting.TRFLSQFitter(calc_uncertainties=True)
 
 # run optimization and error
 bestfit_model = fitter(compound_model,
-                       lam_fit,
-                       flux_fit,
-                       weights=1.0 / noise_fit,
+                       lam_clean,
+                       flux_clean,
+                       weights=1.0 / noise_clean,
                        maxiter=5000)
 
 # plot
@@ -243,7 +232,7 @@ ax[0].fill_between(lam_clean,
                    color="dimgray",
                    alpha=0.8,
                    label="noise")
-ax[0].axvspan(11622.6, 11624.4, color='pink', alpha=0.2, label='masked noise')
+#ax[0].axvspan(11622.6, 11624.4, color='pink', alpha=0.2, label='masked noise')
 
 # plot the bestfit model
 ax[0].plot(lam_model,
@@ -253,16 +242,15 @@ ax[0].plot(lam_model,
            lw=2)
 
 # individual components
-cont_m = bestfit_model[6]
+cont_m = bestfit_model[5]
 colors = {
     "1": "purple",
     "2": "royalblue",
     "3": "crimson",
     "4": "teal",
     "5": 'orange',
-    '6': 'green'
 }
-for i, label in enumerate(["1", "2", "3", '4', '5', '6']):
+for i, label in enumerate(["1", "2", "3", '4', '5']):
     comp = bestfit_model[i]
     ax[0].plot(lam_model,
                comp(lam_model) + cont_m(lam_model),
@@ -289,9 +277,9 @@ ax[0].legend(frameon=False)
 # sigma (i.e. the "pull") so we can read significance straight off the plot:
 # if the model + noise are correct, these should scatter ~N(0,1)
 # computed only on the masked-in points, since those are what the fitter saw
-residual_sigma = (flux_fit - bestfit_model(lam_fit))/noise_fit
+residual_sigma = (flux_clean - bestfit_model(lam_clean))/noise_clean
 ax[1].scatter(
-    lam_fit,
+    lam_clean,
     residual_sigma,
     s=10,
     c="orange",
@@ -300,7 +288,7 @@ ax[1].scatter(
 )
 ax[1].axhline(0, ls='--', alpha=0.4)
 # +-1/2/3 sigma reference lines to eyeball how significant the residuals are
-for level, style in [(1, ':'), (2, '--'), (3, '-'), (4, '-'), (5, '-'), (6, '-')]:
+for level, style in [(1, ':'), (2, '--'), (3, '-'), (4, '-'), (5, '-')]:
     ax[1].axhline(level, ls=style, color='red', alpha=0.3, lw=0.8)
     ax[1].axhline(-level, ls=style, color='red', alpha=0.3, lw=0.8)
 ax[1].legend(frameon=True)
@@ -309,7 +297,7 @@ plt.show()
 # quantify overall fit significance: reduced chi^2 should be ~1 if the model
 # is a good fit and noise_fit is a correctly-calibrated 1-sigma uncertainty;
 # >>1 means either the model is missing real structure or noise is underestimated
-dof = len(lam_fit) - len(bestfit_model.parameters)
+dof = len(lam_clean) - len(bestfit_model.parameters)
 chi2 = np.sum(residual_sigma**2)
 print(f"chi2 = {chi2:.1f}, dof = {dof}, reduced chi2 = {chi2 / dof:.2f}")
 print(
@@ -319,7 +307,7 @@ print(
 
 
 # save
-fig.savefig('./output/improved_gaussians/Hgamma/6_gaussian_masked_constrained.png')
-with open('./output/improved_gaussians/Hgamma/6_gaussian_masked_constrained.pkl',
+fig.savefig('./output/improved_gaussians/Halpha/5_gaussian_constrained.png')
+with open('./output/improved_gaussians/Halpha/5_gaussian_constrained.pkl',
           'wb') as f:
     dill.dump(bestfit_model, f)
