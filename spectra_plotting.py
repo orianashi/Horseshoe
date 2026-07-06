@@ -137,9 +137,9 @@ noise_nir_plot = noise_nir_quad if noise_in_quadrature else noise_nir_smooth
 z_A = 1.679
 z_B = 1.677  #this one makes the peaks line up better with the lines
 
-lam_uvb_rest = lam_uvb_trim / (1 + z_B)
-lam_vis_rest = lam_vis_trim / (1 + z_B)
-lam_nir_rest = lam_nir_trim / (1 + z_B)
+lam_uvb_rest = lam_uvb_trim / (1 + z_A)
+lam_vis_rest = lam_vis_trim / (1 + z_A)
+lam_nir_rest = lam_nir_trim / (1 + z_A)
 
 #load in reference
 horseshoe_ref = np.genfromtxt('./absorption_wls/horseshoe_atoms.dat',

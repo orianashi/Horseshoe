@@ -69,14 +69,7 @@ noise_fit = noise_clean[noise_peak_mask]
 sigma_instr = 17569 / (5600 * 2.355)
 
 gauss_guesses = {
-    '1': {
-        'z_guess' : z_A + 0.0007,
-        'amplitude': 5,
-        'stddev': 2,
-        'stddev_bounds': (0, 5),
-        'amplitude_bound': (1, 15),
-        'mean_range': 3  },   
-     '2': {
+     '1': {
         # main core of source A
         'z_guess': z_A + 0.0001,
         'amplitude': 12,
@@ -85,7 +78,7 @@ gauss_guesses = {
         'amplitude_bound': (2, None),
         'mean_range': 3,
     },
-    '3': {
+    '2': {
         'z_guess': z_B + 0.0004,
         'amplitude': 2,
         'stddev': 2.2,
@@ -93,7 +86,7 @@ gauss_guesses = {
         'amplitude_bound': (1, None),
         'mean_range': 1.5,
     },
-    '4': {
+    '3': {
         'z_guess': z_B,
         'amplitude': 8,
         'stddev': 2.2,
@@ -101,7 +94,7 @@ gauss_guesses = {
         'amplitude_bound': (1, None),
         'mean_range': 5,
     },
-    '5': {
+    '4': {
         'z_guess' : z_B - 0.0005,
         'amplitude': 5,
         'stddev': 2,
@@ -145,11 +138,6 @@ ax.axvline(line * (1 + gauss_guesses['4']['z_guess']),
            alpha=0.5,
            lw=0.8)
 
-ax.axvline(line * (1 + gauss_guesses['5']['z_guess']),
-           color='red',
-           ls='--',
-           alpha=0.5,
-           lw=0.8)
 
 #ax.axvspan(11622.6, 11624.4, color='pink', alpha=0.2, label='masked noise')
 
@@ -191,14 +179,14 @@ gs_1 = create_gaussians('1')
 gs_2 = create_gaussians("2")
 gs_3 = create_gaussians("3")
 gs_4 = create_gaussians("4")
-gs_5 = create_gaussians("5")
+#gs_5 = create_gaussians("5")
 
 # also make a continuum
 continuum = models.Const1D(amplitude=np.nanmedian(flux_clean),
                            name="continuum")  #makes a flat baseline
 
 # combine into a compound model
-concat_gaussians = gs_1 + gs_2 + gs_3  + gs_4 + gs_5 + [
+concat_gaussians = gs_1 + gs_2 + gs_3  + gs_4 +  [
     continuum
 ]
 compound_model = reduce(operator.add, concat_gaussians)
@@ -242,15 +230,15 @@ ax[0].plot(lam_model,
            lw=2)
 
 # individual components
-cont_m = bestfit_model[5]
+cont_m = bestfit_model[4]
 colors = {
     "1": "purple",
     "2": "royalblue",
     "3": "crimson",
     "4": "teal",
-    "5": 'orange',
+   # "5": 'orange',
 }
-for i, label in enumerate(["1", "2", "3", '4', '5']):
+for i, label in enumerate(["1", "2", "3", '4']):
     comp = bestfit_model[i]
     ax[0].plot(lam_model,
                comp(lam_model) + cont_m(lam_model),

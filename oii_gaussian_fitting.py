@@ -218,8 +218,8 @@ lineratio_A = lines[0] / lines[1]
 g_3726A.mean.tied = create_mean_tie(1, lineratio_A)
 g_3726A.stddev.tied = create_std_tie(1)
 g_3726A.amplitude.bounds = (0,
-                            wing_bestfit.amplitude_0 / 1.1
-                            )  # removed lower bound on amplitude 
+                            wing_bestfit.amplitude_0 / 1.5
+                            )  
 
 g_3729B = models.Gaussian1D(name=f'{line_names[1]}_B',
                             mean=lines[1] * (z_B + 1),

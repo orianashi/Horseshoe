@@ -270,9 +270,10 @@ ax[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
 ax[0].legend(frameon=False)
 
 # plot the residuals (data - model) in the second subplot
+residual_sigma = (flux_clean - bestfit_model(lam_clean))/noise_clean
 ax[1].scatter(
     lam_clean,
-    (flux_clean - bestfit_model(lam_clean))/noise_clean,
+    residual_sigma,
     s=10,
     c="orange",
     label="(flux - model)/noise",
@@ -283,6 +284,10 @@ ax[1].axhline(2, ls = '--', lw = 0.5, c= 'red')
 ax[1].axhline(-1, ls = '-.', lw = 0.5, c = 'red')
 ax[1].axhline(-2, ls = '--', lw = 0.5, c= 'red')
 ax[1].legend(frameon=True)
+print(
+     f"Within 1sig: {np.sum(np.abs(residual_sigma)<=1)} ({(100*(np.sum(np.abs(residual_sigma)<=1))/len(residual_sigma)):.2f}%), "
+     f"Within 2sig: {np.sum(np.abs(residual_sigma) <= 2)} ({(100*(np.sum(np.abs(residual_sigma)<=2))/len(residual_sigma)):.2f}%), "
+     f"Within 3sig: {np.sum(np.abs(residual_sigma) <= 3)} ({ (100*(np.sum(np.abs(residual_sigma)<=3))/len(residual_sigma)):.2f}%)")
 plt.show()
 
 # save
