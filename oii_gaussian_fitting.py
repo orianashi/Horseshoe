@@ -217,8 +217,8 @@ g_3726A = models.Gaussian1D(name=f'{line_names[0]}_A',
 lineratio_A = lines[0] / lines[1]
 g_3726A.mean.tied = create_mean_tie(1, lineratio_A)
 g_3726A.stddev.tied = create_std_tie(1)
-g_3726A.amplitude.bounds = (0,
-                            wing_bestfit.amplitude_0 / 1.5
+g_3726A.amplitude.bounds = (wing_bestfit.amplitude_0 / 1.5,
+                            wing_bestfit.amplitude_0 / 0.35
                             )  
 
 g_3729B = models.Gaussian1D(name=f'{line_names[1]}_B',
@@ -228,7 +228,7 @@ g_3729B = models.Gaussian1D(name=f'{line_names[1]}_B',
 lineratio_B = lines[1] / lines[0]
 g_3729B.mean.tied = create_mean_tie(2, lineratio_B)
 g_3729B.stddev.tied = create_std_tie(2)
-g_3729B.amplitude.bounds = (0,
+g_3729B.amplitude.bounds = (wing_bestfit.amplitude_0 * 0.35,
                             wing_bestfit.amplitude_1 * 1.5
                             )  # removed lower bound on amplitude, so now R < 1.5 
 
@@ -244,9 +244,11 @@ bestfit_model = fitter(compound_model,
                        weights=1.0 / noise_clean,
                        maxiter=5000)
 
-# print ratios 
-print(f"3729A/3726A: {bestfit_model.amplitude_1 / bestfit_model.amplitude_0}")
-print(f"3729B/3726B: {bestfit_model.amplitude_3 / bestfit_model.amplitude_2}")
+# print ratios
+ratio_A = bestfit_model.amplitude_1 / bestfit_model.amplitude_0
+ratio_B = bestfit_model.amplitude_3 / bestfit_model.amplitude_2
+print(f"3729A/3726A: {ratio_A}")
+print(f"3729B/3726B: {ratio_B}")
 # make plot
 lam_model = np.linspace(lam_clean[0], lam_clean[-1], 30000)
 fig, ax = plt.subplots(nrows=2,
@@ -310,6 +312,12 @@ ax[1].scatter(
 ax[1].legend(frameon=True)
 plt.show()
 
-fig.savefig('./output/OII/OII_fullfit_gaussians_Rgeq1.1.png')
-with open('./output/OII/OII_fullfit_gaussians_Rgeq1.1.pkl', 'wb') as f:
-    dill.dump(wing_bestfit, f)
+fig.savefig('./output/improved_gaussians/OII/OII_fullfit_gaussians.png')
+with open('./output/improved_gaussians/OII/OII_fullfit_gaussians.pkl',
+          'wb') as f:
+    dill.dump(
+        {
+            'model': bestfit_model,
+            'ratio_3729A_3726A': ratio_A,
+            'ratio_3729B_3726B': ratio_B,
+        }, f)

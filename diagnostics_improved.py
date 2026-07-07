@@ -20,24 +20,25 @@ Hbeta_new = load_pkl('./output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl')
 Hgamma_new = load_pkl('./output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl')
 OIII4959_new = load_pkl('./output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl')
 OIII5007_new = load_pkl('./output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl')
+OII_new = load_pkl('./output/improved_gaussians/OII/OII_fluxes.pkl')
 
 # lines with no improved_gaussians refit yet: fall back to legacy single-gaussian fluxes
 NIIalphas_legacy = load_pkl('./output/NII/NII_Halpha_ratios.pkl')
-OIIfluxes_legacy = load_pkl('./output/OII/OII_fluxes.pkl')
 
 # NII_Halpha_ratios.pkl['fluxes'][src] = [flux_Halpha, flux_NII6583, flux_NII6548]
 NII6583 = {
     'flux': {src: NIIalphas_legacy['fluxes'][src][1] for src in ('A', 'B')},
     'uncert': {src: NIIalphas_legacy['flux_uncerts'][src][1] for src in ('A', 'B')},
 }
-# OII_fluxes.pkl['fluxes'][src] = [flux_3726, flux_3729]
+# OII_fluxes.pkl['component_fluxes'][src] = [flux_3726, flux_3729], both directly
+# fit (and full-covariance propagated) by the improved 4-gaussian OII model.
 OII3726 = {
-    'flux': {src: OIIfluxes_legacy['fluxes'][src][0] for src in ('A', 'B')},
-    'uncert': {src: OIIfluxes_legacy['flux_uncerts'][src][0] for src in ('A', 'B')},
+    'flux': {src: OII_new['component_fluxes'][src][0] for src in ('A', 'B')},
+    'uncert': {src: OII_new['component_flux_uncerts'][src][0] for src in ('A', 'B')},
 }
 OII3729 = {
-    'flux': {src: OIIfluxes_legacy['fluxes'][src][1] for src in ('A', 'B')},
-    'uncert': {src: OIIfluxes_legacy['flux_uncerts'][src][1] for src in ('A', 'B')},
+    'flux': {src: OII_new['component_fluxes'][src][1] for src in ('A', 'B')},
+    'uncert': {src: OII_new['component_flux_uncerts'][src][1] for src in ('A', 'B')},
 }
 
 

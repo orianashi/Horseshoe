@@ -17,9 +17,9 @@ Hbeta_new = load_pkl('./output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl')
 Hgamma_new = load_pkl('./output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl')
 OIII4959_new = load_pkl('./output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl')
 OIII5007_new = load_pkl('./output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl')
+OII_new = load_pkl('./output/improved_gaussians/OII/OII_fluxes.pkl')
 
 NIIalphas = load_pkl('./output/NII/NII_Halpha_ratios.pkl')
-OIIfluxes = load_pkl('./output/OII/OII_fluxes.pkl')
 
 A_ratios = load_pkl('./output/tabling/A_ratios_improved.pkl')
 B_ratios = load_pkl('./output/tabling/B_ratios_improved.pkl')
@@ -32,23 +32,15 @@ def flux_row(line, flux, flux_unc, notes=''):
     return dict(line=line, flux_ergs_s_cm2=flux, flux_uncert=flux_unc, notes=notes)
 
 
-def build_flux_table(source, oii_directly_fit):
-    """
-    oii_directly_fit: '3726' or '3729' -- which line is directly fit for this source
-        (the other is derived via the low-density 1.5 ratio, already baked into OII_fluxes.pkl).
-    """
+def build_flux_table(source):
     rows = []
 
-    if oii_directly_fit == '3729':
-        rows.append(flux_row('[OII]3726', OIIfluxes['fluxes'][source][0], OIIfluxes['flux_uncerts'][source][0],
-                              'legacy single-gaussian fit; derived from [OII]3729 / 1.5 (low-density limit)'))
-        rows.append(flux_row('[OII]3729', OIIfluxes['fluxes'][source][1], OIIfluxes['flux_uncerts'][source][1],
-                              'legacy single-gaussian fit; directly fit'))
-    else:
-        rows.append(flux_row('[OII]3726', OIIfluxes['fluxes'][source][0], OIIfluxes['flux_uncerts'][source][0],
-                              'legacy single-gaussian fit; directly fit'))
-        rows.append(flux_row('[OII]3729', OIIfluxes['fluxes'][source][1], OIIfluxes['flux_uncerts'][source][1],
-                              'legacy single-gaussian fit; derived from [OII]3726 * 1.5 (low-density limit)'))
+    rows.append(flux_row('[OII]3726', OII_new['component_fluxes'][source][0],
+                          OII_new['component_flux_uncerts'][source][0],
+                          'improved multi-gaussian fit; directly fit'))
+    rows.append(flux_row('[OII]3729', OII_new['component_fluxes'][source][1],
+                          OII_new['component_flux_uncerts'][source][1],
+                          'improved multi-gaussian fit; directly fit'))
 
     rows.append(flux_row('Hgamma', Hgamma_new['fluxes'][source], Hgamma_new['flux_uncerts'][source],
                           'improved multi-gaussian fit'))
@@ -80,8 +72,8 @@ def build_ratio_table(ratios_dict):
 # ==================
 # build tables
 # ==================
-df_A_fluxes = build_flux_table('A', oii_directly_fit='3729')
-df_B_fluxes = build_flux_table('B', oii_directly_fit='3726')
+df_A_fluxes = build_flux_table('A')
+df_B_fluxes = build_flux_table('B')
 df_A_ratios = build_ratio_table(A_ratios)
 df_B_ratios = build_ratio_table(B_ratios)
 

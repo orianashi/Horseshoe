@@ -66,9 +66,56 @@ LINES = {
         'B_indices': [3, 4, 5],
         'save': './output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl',
     },
+    'OII': {
+        # components are [3726_A, 3729_A, 3726_B, 3729_B, continuum]; within
+        # each source the two lines' stddevs are tied to each other (forced
+        # to the same width), unlike every other line's model above.
+        'pkl': './output/improved_gaussians/OII/OII_fullfit_gaussians.pkl',
+        'A_indices': [0, 1],
+        'B_indices': [2, 3],
+        'save': './output/improved_gaussians/OII/OII_fluxes.pkl',
+    },
 }
 
 SQRT2PI = np.sqrt(2 * np.pi)
+
+
+def load_model(path):
+    """OII_fullfit_gaussians.pkl stores {'model': ..., 'ratio_...': ...}
+    (it also carries the fitted doublet ratios); every other line's pkl is
+    the bare astropy model. Unwrap either into just the model."""
+    with open(path, 'rb') as f:
+        obj = dill.load(f)
+    return obj['model'] if isinstance(obj, dict) else obj
+
+
+def _eval_tied(tie_func, model):
+    result = tie_func(model)
+    return float(getattr(result, 'value', result))
+
+
+def _tied_param_grad(model, tied_param, idx, rel_step=1e-6):
+    """Finite-difference gradient of a tied parameter's resolved value with
+    respect to each of the model's free parameters. Needed when a component
+    tied to another component *within the same model* (e.g. OII's doublet
+    stddevs) should still inherit its share of that free parameter's
+    uncertainty -- unlike a fixed param tied to another line's fit entirely
+    (handled separately below via `tie_uncertainty`), a same-model tie's
+    referenced parameter IS in this model's own covariance matrix.
+    """
+    tie_func = tied_param.tied
+    grad = np.zeros(len(idx))
+    for name, k in idx.items():
+        free_param = getattr(model, name)
+        orig = free_param.value
+        step = rel_step * (abs(orig) if orig != 0 else 1.0)
+        free_param.value = orig + step
+        plus = _eval_tied(tie_func, model)
+        free_param.value = orig - step
+        minus = _eval_tied(tie_func, model)
+        free_param.value = orig
+        grad[k] = (plus - minus) / (2 * step)
+    return grad
 
 
 def flux_and_uncert(bestfit_model, indices):
@@ -88,15 +135,22 @@ def flux_and_uncert(bestfit_model, indices):
     total = 0.0
     grad = np.zeros(len(names))
     for i in indices:
-        amp = getattr(bestfit_model, f'amplitude_{i}').value
-        std = getattr(bestfit_model, f'stddev_{i}').value
+        amp_param = getattr(bestfit_model, f'amplitude_{i}')
+        std_param = getattr(bestfit_model, f'stddev_{i}')
+        amp, std = amp_param.value, std_param.value
         total += amp * std * SQRT2PI
+
+        if amp_param.tied:
+            grad += std * SQRT2PI * _tied_param_grad(bestfit_model, amp_param, idx)
+        elif f'amplitude_{i}' in idx:
+            grad[idx[f'amplitude_{i}']] += std * SQRT2PI
+
         # a fixed mean/stddev (e.g. a component tied to another line's fit)
         # has no variance and isn't in the covariance matrix at all -- it
         # contributes zero to the propagated uncertainty, so just skip it.
-        if f'amplitude_{i}' in idx:
-            grad[idx[f'amplitude_{i}']] += std * SQRT2PI
-        if f'stddev_{i}' in idx:
+        if std_param.tied:
+            grad += amp * SQRT2PI * _tied_param_grad(bestfit_model, std_param, idx)
+        elif f'stddev_{i}' in idx:
             grad[idx[f'stddev_{i}']] += amp * SQRT2PI
 
     uncert = np.sqrt(grad @ cov @ grad)
@@ -200,8 +254,7 @@ def tie_uncertainty(bestfit_model, tie_cfg, indices, n_samples=4000, seed=42):
 # run for each line
 # ======================================
 for line_name, cfg in LINES.items():
-    with open(cfg['pkl'], 'rb') as f:
-        bestfit_model = dill.load(f)
+    bestfit_model = load_model(cfg['pkl'])
 
     flux_A, uncert_A = flux_and_uncert(bestfit_model, cfg['A_indices'])
     flux_B, uncert_B = flux_and_uncert(bestfit_model, cfg['B_indices'])
