@@ -2,7 +2,7 @@ line,flux_ergs_s_cm2,flux_uncert,notes
 [OII]3726,18.199,2.112,legacy single-gaussian fit; directly fit
 [OII]3729,27.298,3.167,legacy single-gaussian fit; derived from [OII]3726 * 1.5 (low-density limit)
 Hgamma,21.249,2.64,improved multi-gaussian fit
-Hbeta,43.54,5.035,improved multi-gaussian fit
+Hbeta,43.54,6.547,improved multi-gaussian fit
 [OIII]4959,67.997,9.07,improved multi-gaussian fit
 [OIII]5007,204.833,5.596,improved multi-gaussian fit
 [NII]6548,-0.834,-0.88,legacy single-gaussian fit (no improved refit)
