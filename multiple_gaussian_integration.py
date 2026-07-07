@@ -1,5 +1,9 @@
 import dill
 import numpy as np
+import astropy.units as u
+from astropy.io import fits
+from functools import reduce
+import operator
 
 # ======================================
 # initialize information
@@ -23,6 +27,20 @@ LINES = {
         'A_indices': [0, 1, 2],
         'B_indices': [3, 4, 5],
         'save': './output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl',
+        # source B's mean/stddev here are FIXED, tied to source B's Halpha fit
+        # (see infinite_gaussians.py) -- they carry Halpha's own fit
+        # uncertainty, which never shows up in this line's own covariance
+        # matrix (fixed params aren't in it). `tie` lets us add that
+        # uncertainty back in via a finite-difference Jacobian.
+        'tie': {
+            'indices': [3, 4, 5],
+            'ref_pkl': './output/improved_gaussians/Halpha/5_gaussian_constrained.pkl',
+            'ref_indices': [2, 3, 4],
+            'ref_rest_wavelength': 6562.819,
+            'rest_wavelength': 4861.333,
+            'window_z_center': 1.677,
+            'window_halfwidth': 50,
+        },
     },
     'Hgamma': {
         'pkl': './output/improved_gaussians/Hgamma/6_gaussian_masked_constrained.pkl',
@@ -85,6 +103,99 @@ def flux_and_uncert(bestfit_model, indices):
     return total, uncert
 
 
+def load_window(rest_wavelength, z_center, halfwidth):
+    """Reproduce infinite_gaussians.py's load/trim/clean of the NIR spectrum
+    around one emission line, needed to redo the linear amplitude solve for
+    tie-uncertainty propagation below."""
+    with fits.open("./Data/X-Shooter/1D/stacked_NIR.fits") as hdu:
+        h = hdu[1].header
+        flux_data = hdu[1].data
+        noise_data = hdu[4].data
+    lam = ((h["CRVAL1"] + (np.arange(h["NAXIS1"]) + 1.0 - h["CRPIX1"]) *
+            h["CDELT1"]) * u.Unit(h["CUNIT1"])).to("AA").value
+    flux_norm = flux_data / np.nanmedian(flux_data)
+    noise_norm = noise_data / np.nanmedian(flux_data)
+    zoom = np.where((lam <= rest_wavelength * (1 + z_center) + halfwidth)
+                    & (lam >= rest_wavelength * (1 + z_center) - halfwidth))[0]
+    lam_trim, flux_trim, noise_trim = lam[zoom], flux_norm[zoom], noise_norm[zoom]
+    bad = (~np.isfinite(flux_trim) | ~np.isfinite(noise_trim) | (noise_trim < 0))
+    return lam_trim[~bad], flux_trim[~bad], noise_trim[~bad]
+
+
+def tie_uncertainty(bestfit_model, tie_cfg, indices, n_samples=4000, seed=42):
+    """Extra flux uncertainty (total + per-component) coming from the fact
+    that `indices`' mean/stddev are fixed, tied to another line's fit
+    (see the `tie` entry in LINES), rather than truly known constants.
+
+    Propagated via Monte Carlo: draw the reference line's mean/stddev from
+    its own fitted covariance, transform to this line's tied values, and
+    redo the (now-linear, since shape is fixed) amplitude solve for each
+    draw. A finite-difference Jacobian was tried first but badly
+    *underestimated* this: the components are so overlapping/degenerate
+    that a 1-sigma shift in the reference mean (~0.1-0.5 AA, comparable to
+    the ~0.6 AA pixel spacing) pushes the amplitude solve well outside its
+    locally-linear regime, so the true (nonlinear) response has to be
+    sampled directly rather than linearized.
+    """
+    c_kms = 299792.458
+    rest_ref = tie_cfg['ref_rest_wavelength']
+    line_new = tie_cfg['rest_wavelength']
+
+    lam_fit, flux_fit, noise_fit = load_window(
+        tie_cfg['rest_wavelength'], tie_cfg['window_z_center'],
+        tie_cfg['window_halfwidth'])
+    weights = 1.0 / noise_fit
+
+    other_indices = [i for i in range(bestfit_model.n_submodels - 1)
+                     if i not in indices]
+    other_model = reduce(operator.add,
+                         [bestfit_model[i] for i in other_indices])
+    continuum = bestfit_model[bestfit_model.n_submodels - 1]
+    residual = flux_fit - other_model(lam_fit) - continuum(lam_fit)
+
+    def linear_amplitudes(means, stds):
+        X = np.column_stack(
+            [np.exp(-0.5 * ((lam_fit - m) / s)**2) for m, s in zip(means, stds)])
+        XtWX = X.T @ (X * (weights**2)[:, None])
+        XtWy = X.T @ (residual * weights**2)
+        return np.linalg.solve(XtWX, XtWy)
+
+    def shape_transform(theta):
+        n = len(indices)
+        mean_ref, std_ref = theta[:n], theta[n:]
+        z_i = mean_ref / rest_ref - 1
+        sigma_v = std_ref / mean_ref * c_kms
+        mean_new = line_new * (1 + z_i)
+        std_new = sigma_v / c_kms * mean_new
+        return mean_new, std_new
+
+    def fluxes_at(theta):
+        mean_new, std_new = shape_transform(theta)
+        amp = linear_amplitudes(mean_new, std_new)
+        comp_fluxes = amp * std_new * SQRT2PI
+        return comp_fluxes
+
+    with open(tie_cfg['ref_pkl'], 'rb') as f:
+        ref_model = dill.load(f)
+    ref_names = ref_model.cov_matrix.param_names
+    ref_cov = ref_model.cov_matrix.cov_matrix
+    ref_idx = {n: k for k, n in enumerate(ref_names)}
+    param_order = ([f'mean_{i}' for i in tie_cfg['ref_indices']] +
+                   [f'stddev_{i}' for i in tie_cfg['ref_indices']])
+    sel = [ref_idx[p] for p in param_order]
+    cov_ref = ref_cov[np.ix_(sel, sel)]
+    theta0 = np.array([getattr(ref_model, p).value for p in param_order])
+
+    rng = np.random.default_rng(seed)
+    theta_samples = rng.multivariate_normal(theta0, cov_ref, size=n_samples)
+    comp_samples = np.array([fluxes_at(theta) for theta in theta_samples])
+    total_samples = comp_samples.sum(axis=1)
+
+    comp_uncert_tie = comp_samples.std(axis=0)
+    total_uncert_tie = total_samples.std()
+    return total_uncert_tie, comp_uncert_tie
+
+
 # ======================================
 # run for each line
 # ======================================
@@ -107,6 +218,18 @@ for line_name, cfg in LINES.items():
         k: np.array(v)
         for k, v in component_flux_uncerts.items()
     }
+
+    tie_cfg = cfg.get('tie')
+    if tie_cfg is not None:
+        for source, indices in [('A', cfg['A_indices']), ('B', cfg['B_indices'])]:
+            if set(tie_cfg['indices']) == set(indices):
+                total_tie, comp_tie = tie_uncertainty(bestfit_model, tie_cfg, indices)
+                if source == 'A':
+                    uncert_A = np.sqrt(uncert_A**2 + total_tie**2)
+                else:
+                    uncert_B = np.sqrt(uncert_B**2 + total_tie**2)
+                component_flux_uncerts[source] = np.sqrt(
+                    component_flux_uncerts[source]**2 + comp_tie**2)
 
     print(
         f"Flux for {line_name} source A: {flux_A:.3f} +/- {uncert_A:.3f} ergs/s/cm2"
