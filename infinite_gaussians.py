@@ -81,7 +81,7 @@ gauss_guesses = {
         'z_guess': z_A + 0.0001,
         'amplitude': 12,
         'stddev': 1.5,
-        'stddev_bounds': (sigma_instr,3 ),
+        'stddev_bounds': (0,3 ),
         'amplitude_bound': (2, None),
         'mean_range': 3,
     },
@@ -89,15 +89,15 @@ gauss_guesses = {
         'z_guess': z_B + 0.0004,
         'amplitude': 2,
         'stddev': 2.2,
-        'stddev_bounds': (0.75, 3),
+        'stddev_bounds': (0, 3),
         'amplitude_bound': (1, None),
-        'mean_range': 1.5,
+        'mean_range': 3,
     },
     '4': {
         'z_guess': z_B,
         'amplitude': 8,
         'stddev': 2.2,
-        'stddev_bounds': (sigma_instr, 3),
+        'stddev_bounds': (0.75, 3),
         'amplitude_bound': (1, None),
         'mean_range': 5,
     },
@@ -300,14 +300,28 @@ plt.show()
 dof = len(lam_clean) - len(bestfit_model.parameters)
 chi2 = np.sum(residual_sigma**2)
 print(f"chi2 = {chi2:.1f}, dof = {dof}, reduced chi2 = {chi2 / dof:.2f}")
+
+# restrict the within-Nsig stats to windows immediately around each fitted
+# emission line (mean +- n_sigma_window*stddev), instead of the whole lam_clean
+# array, since most of that array is line-free continuum that would dilute
+# how well the lines themselves are fit
+n_sigma_window = 3.5
+near_line_mask = reduce(
+    operator.or_,
+    [np.abs(lam_clean - bestfit_model[i].mean.value) <=
+     n_sigma_window * bestfit_model[i].stddev.value for i in range(5)])
+residual_sigma_near = residual_sigma[near_line_mask]
+
+print(f"Points near emission lines (within {n_sigma_window}sigma of a line center): "
+      f"{len(residual_sigma_near)} / {len(residual_sigma)}")
 print(
-     f"Within 1sig: {np.sum(np.abs(residual_sigma)<=1)} ({(100*(np.sum(np.abs(residual_sigma)<=1))/len(residual_sigma)):.2f}%), "
-     f"Within 2sig: {np.sum(np.abs(residual_sigma) <= 2)} ({(100*(np.sum(np.abs(residual_sigma)<=2))/len(residual_sigma)):.2f}%), "
-     f"Within 3sig: {np.sum(np.abs(residual_sigma) <= 3)} ({ (100*(np.sum(np.abs(residual_sigma)<=3))/len(residual_sigma)):.2f}%)")
+     f"Within 1sig: {np.sum(np.abs(residual_sigma_near)<=1)} ({(100*(np.sum(np.abs(residual_sigma_near)<=1))/len(residual_sigma_near)):.2f}%), "
+     f"Within 2sig: {np.sum(np.abs(residual_sigma_near) <= 2)} ({(100*(np.sum(np.abs(residual_sigma_near)<=2))/len(residual_sigma_near)):.2f}%), "
+     f"Within 3sig: {np.sum(np.abs(residual_sigma_near) <= 3)} ({ (100*(np.sum(np.abs(residual_sigma_near)<=3))/len(residual_sigma_near)):.2f}%)")
 
 
 # save
-fig.savefig('./output/improved_gaussians/Halpha/5_gaussian_constrained.png')
-with open('./output/improved_gaussians/Halpha/5_gaussian_constrained.pkl',
+fig.savefig('./output/improved_gaussians/Halpha/5_gaussian_constrained_1.png')
+with open('./output/improved_gaussians/Halpha/5_gaussian_constrained_1.pkl',
           'wb') as f:
     dill.dump(bestfit_model, f)
