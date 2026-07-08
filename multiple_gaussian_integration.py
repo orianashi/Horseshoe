@@ -77,12 +77,31 @@ SQRT2PI = np.sqrt(2 * np.pi)
 
 
 def load_model(path):
-    """OII_fullfit_gaussians.pkl stores {'model': ..., 'ratio_...': ...}
-    (it also carries the fitted doublet ratios); every other line's pkl is
-    the bare astropy model. Unwrap either into just the model."""
+    """OII_fullfit_gaussians.pkl and the Balmer joint_fit pkls store
+    {'model': ..., ...extra metadata...}; every other line's pkl is the bare
+    astropy model. Unwrap either into just the model."""
     with open(path, 'rb') as f:
         obj = dill.load(f)
     return obj['model'] if isinstance(obj, dict) else obj
+
+
+def load_tie_map(path):
+    """The Balmer joint_fit pkls (balmer_joint_gaussian_fitting.py) store a
+    plain-data 'tie_map' alongside the model: {index: {'stddev_ref': ref_idx,
+    'stddev_ratio': ratio, ...}} for every component whose stddev was tied
+    to another component during the fit. Those ties are baked to `.fixed`
+    constants before saving rather than kept as live `.tied` callables --
+    dill's pickling of callables (closures, and even class-instance __call__
+    methods) has proven unreliable across Python builds/environments
+    (confirmed: corrupted bytecode causing a segfault in one environment,
+    `SystemError: unknown opcode` in another). flux_and_uncert uses this
+    dict to add back each baked component's exact analytic gradient
+    contribution. Lines without a tie_map (i.e. every pkl that isn't a dict,
+    or a dict without this key) return {}.
+    """
+    with open(path, 'rb') as f:
+        obj = dill.load(f)
+    return obj.get('tie_map', {}) if isinstance(obj, dict) else {}
 
 
 def _eval_tied(tie_func, model):
@@ -93,10 +112,12 @@ def _eval_tied(tie_func, model):
 def _tied_param_grad(model, tied_param, idx, rel_step=1e-6):
     """Finite-difference gradient of a tied parameter's resolved value with
     respect to each of the model's free parameters. Needed when a component
-    is tied to another component *within the same model* (e.g. OII's doublet
-    stddevs, or the cross-line Balmer ties in balmer_joint_gaussian_fitting.py)
-    so it still inherits its share of that free parameter's uncertainty --
-    the referenced parameter IS in this model's own covariance matrix.
+    is tied to another component *within the same model* via a live `.tied`
+    callable (e.g. OII's doublet stddevs) so it still inherits its share of
+    that free parameter's uncertainty -- the referenced parameter IS in this
+    model's own covariance matrix. The Balmer joint fit no longer uses this
+    path (its ties are baked and propagated exactly via tie_map instead, see
+    load_tie_map) since live callables don't survive pickling reliably.
     """
     tie_func = tied_param.tied
     grad = np.zeros(len(idx))
@@ -113,7 +134,7 @@ def _tied_param_grad(model, tied_param, idx, rel_step=1e-6):
     return grad
 
 
-def flux_and_uncert(bestfit_model, indices):
+def flux_and_uncert(bestfit_model, indices, tie_map=None):
     """Total integrated flux (sum of gaussian areas: amp*stddev*sqrt(2pi)) for
     one or more gaussian components, with uncertainty propagated through the
     fitter's full parameter covariance matrix rather than combined-in-quadrature
@@ -122,10 +143,18 @@ def flux_and_uncert(bestfit_model, indices):
     line): the fitter can trade amplitude between them, making their parameters
     strongly (anti-)correlated, so summing their variances independently can
     badly over- or under-estimate the combined source's flux uncertainty.
+
+    tie_map (see load_tie_map) covers components whose stddev was baked to a
+    `.fixed` constant tied to another component by a plain ratio -- since the
+    tie is exactly linear (stddev_i = ratio * stddev_ref), its gradient
+    contribution is just `ratio`, added directly to the ref component's slot
+    rather than via a live `.tied` callable. Defaults to {} (a no-op) for
+    every line that doesn't use this (everything except the Balmer joint fit).
     """
     names = bestfit_model.cov_matrix.param_names
     cov = bestfit_model.cov_matrix.cov_matrix
     idx = {n: k for k, n in enumerate(names)}
+    tie_map = tie_map or {}
 
     total = 0.0
     grad = np.zeros(len(names))
@@ -143,8 +172,13 @@ def flux_and_uncert(bestfit_model, indices):
 
         # a fixed mean/stddev (e.g. a component tied to another line's fit)
         # has no variance and isn't in the covariance matrix at all -- it
-        # contributes zero to the propagated uncertainty, so just skip it.
-        if std_param.tied:
+        # contributes zero to the propagated uncertainty unless tie_map says
+        # otherwise, so just skip it in that case.
+        stddev_tie = tie_map.get(i, {})
+        if 'stddev_ref' in stddev_tie:
+            ref_name = f"stddev_{stddev_tie['stddev_ref']}"
+            grad[idx[ref_name]] += amp * SQRT2PI * stddev_tie['stddev_ratio']
+        elif std_param.tied:
             grad += amp * SQRT2PI * _tied_param_grad(bestfit_model, std_param,
                                                      idx)
         elif f'stddev_{i}' in idx:
@@ -154,106 +188,55 @@ def flux_and_uncert(bestfit_model, indices):
     return total, uncert
 
 
-def flux_and_uncert_diagonal(bestfit_model, indices):
-    """Alternate, simplistic version of flux_and_uncert(): same total flux,
-    but uncertainty from only the diagonal of the covariance matrix (each
-    parameter's own variance), combined in quadrature -- the same recipe as
-    legacy gauss_integration.py's integrate(), rather than propagating
-    through the full covariance matrix. This ignores both the amp/stddev
-    correlation within a component and the correlation between components,
-    so for overlapping multi-gaussian components (see flux_and_uncert's
-    docstring) it will generally over- or under-estimate the true
-    uncertainty. Kept alongside flux_and_uncert() for comparison; a fixed or
-    tied parameter has no diagonal entry and so contributes zero, same as in
-    flux_and_uncert().
-    """
-    names = bestfit_model.cov_matrix.param_names
-    diag = np.diag(bestfit_model.cov_matrix.cov_matrix)
-    idx = {n: k for k, n in enumerate(names)}
-
-    total = 0.0
-    var_total = 0.0
-    for i in indices:
-        amp = getattr(bestfit_model, f'amplitude_{i}').value
-        std = getattr(bestfit_model, f'stddev_{i}').value
-        area = amp * std * SQRT2PI
-        total += area
-
-        amp_uncert = np.sqrt(
-            diag[idx[f'amplitude_{i}']]) if f'amplitude_{i}' in idx else 0.0
-        std_uncert = np.sqrt(
-            diag[idx[f'stddev_{i}']]) if f'stddev_{i}' in idx else 0.0
-        area_uncert = np.sqrt((amp_uncert / amp)**2 +
-                              (std_uncert / std)**2) * area
-        var_total += area_uncert**2
-
-    uncert = np.sqrt(var_total)
-    return total, uncert
-
-
 # ======================================
 # run for each line
 # ======================================
-for line_name, cfg in LINES.items():
-    bestfit_model = load_model(cfg['pkl'])
+if __name__ == "__main__":
+    for line_name, cfg in LINES.items():
+        bestfit_model = load_model(cfg['pkl'])
+        tie_map = load_tie_map(cfg['pkl'])
 
-    flux_A, uncert_A = flux_and_uncert(bestfit_model, cfg['A_indices'])
-    flux_B, uncert_B = flux_and_uncert(bestfit_model, cfg['B_indices'])
-    _, uncert_A_diag = flux_and_uncert_diagonal(bestfit_model,
-                                                cfg['A_indices'])
-    _, uncert_B_diag = flux_and_uncert_diagonal(bestfit_model,
-                                                cfg['B_indices'])
+        flux_A, uncert_A = flux_and_uncert(bestfit_model, cfg['A_indices'],
+                                           tie_map)
+        flux_B, uncert_B = flux_and_uncert(bestfit_model, cfg['B_indices'],
+                                           tie_map)
 
-    component_fluxes = {'A': [], 'B': []}
-    component_flux_uncerts = {'A': [], 'B': []}
-    component_flux_uncerts_diagonal = {'A': [], 'B': []}
-    for source, indices in [('A', cfg['A_indices']), ('B', cfg['B_indices'])]:
-        for i in indices:
-            f_i, u_i = flux_and_uncert(bestfit_model, [i])
-            _, u_i_diag = flux_and_uncert_diagonal(bestfit_model, [i])
-            component_fluxes[source].append(f_i)
-            component_flux_uncerts[source].append(u_i)
-            component_flux_uncerts_diagonal[source].append(u_i_diag)
-    component_fluxes = {k: np.array(v) for k, v in component_fluxes.items()}
-    component_flux_uncerts = {
-        k: np.array(v)
-        for k, v in component_flux_uncerts.items()
-    }
-    component_flux_uncerts_diagonal = {
-        k: np.array(v)
-        for k, v in component_flux_uncerts_diagonal.items()
-    }
+        component_fluxes = {'A': [], 'B': []}
+        component_flux_uncerts = {'A': [], 'B': []}
+        for source, indices in [('A', cfg['A_indices']),
+                                ('B', cfg['B_indices'])]:
+            for i in indices:
+                f_i, u_i = flux_and_uncert(bestfit_model, [i], tie_map)
+                component_fluxes[source].append(f_i)
+                component_flux_uncerts[source].append(u_i)
+        component_fluxes = {
+            k: np.array(v)
+            for k, v in component_fluxes.items()
+        }
+        component_flux_uncerts = {
+            k: np.array(v)
+            for k, v in component_flux_uncerts.items()
+        }
 
-    print(
-        f"Flux for {line_name} source A: {flux_A:.3f} +/- {uncert_A:.3f} ergs/s/cm2"
-    )
-    print(
-        f"Flux for {line_name} source B: {flux_B:.3f} +/- {uncert_B:.3f} ergs/s/cm2"
-    )
-    print(
-        f"  [diagonal-only] source A: {flux_A:.3f} +/- {uncert_A_diag:.3f} ergs/s/cm2"
-    )
-    print(
-        f"  [diagonal-only] source B: {flux_B:.3f} +/- {uncert_B_diag:.3f} ergs/s/cm2"
-    )
+        print(
+            f"Flux for {line_name} source A: {flux_A:.3f} +/- {uncert_A:.3f} ergs/s/cm2"
+        )
+        print(
+            f"Flux for {line_name} source B: {flux_B:.3f} +/- {uncert_B:.3f} ergs/s/cm2"
+        )
 
-    result = {
-        'fluxes': {
-            'A': flux_A,
-            'B': flux_B
-        },
-        'flux_uncerts': {
-            'A': uncert_A,
-            'B': uncert_B
-        },
-        'flux_uncerts_diagonal': {
-            'A': uncert_A_diag,
-            'B': uncert_B_diag
-        },
-        'component_fluxes': component_fluxes,
-        'component_flux_uncerts': component_flux_uncerts,
-        'component_flux_uncerts_diagonal': component_flux_uncerts_diagonal,
-        'units': 'ergs / s / cm2',
-    }
-    with open(cfg['save'], 'wb') as f:
-        dill.dump(result, f)
+        result = {
+            'fluxes': {
+                'A': flux_A,
+                'B': flux_B
+            },
+            'flux_uncerts': {
+                'A': uncert_A,
+                'B': uncert_B
+            },
+            'component_fluxes': component_fluxes,
+            'component_flux_uncerts': component_flux_uncerts,
+            'units': 'ergs / s / cm2',
+        }
+        with open(cfg['save'], 'wb') as f:
+            dill.dump(result, f)

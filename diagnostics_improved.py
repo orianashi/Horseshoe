@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 
+from multiple_gaussian_integration import (LINES, load_model, load_tie_map,
+                                           flux_and_uncert)
+
 plt.ion()
 
 z_A = 1.679  # redshift for source A
@@ -17,9 +20,28 @@ def load_pkl(path):
         return dill.load(f)
 
 
-Halpha_new = load_pkl('./output/improved_gaussians/Halpha/Halpha_fluxes.pkl')
-Hbeta_new = load_pkl('./output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl')
-Hgamma_new = load_pkl('./output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl')
+def load_balmer(line_name):
+    """Halpha/Hbeta/Hgamma flux + uncertainty computed directly from the
+    joint tied fit (balmer_joint_gaussian_fitting.py), via the same
+    full-covariance flux_and_uncert() used for every other line -- rather
+    than depending on a separately-run multiple_gaussian_integration.py
+    output, so this always reflects the current joint-fit model. tie_map
+    carries the baked tie ratios so tied components' uncertainty still
+    propagates correctly (see load_tie_map). No diagonal-only variant is
+    needed here."""
+    cfg = LINES[line_name]
+    model = load_model(cfg['pkl'])
+    tie_map = load_tie_map(cfg['pkl'])
+    flux = {}
+    uncert = {}
+    for src, indices in (('A', cfg['A_indices']), ('B', cfg['B_indices'])):
+        flux[src], uncert[src] = flux_and_uncert(model, indices, tie_map)
+    return {'fluxes': flux, 'flux_uncerts': uncert}
+
+
+Halpha_new = load_balmer('Halpha')
+Hbeta_new = load_balmer('Hbeta')
+Hgamma_new = load_balmer('Hgamma')
 OIII4959_new = load_pkl(
     './output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl')
 OIII5007_new = load_pkl(
@@ -205,7 +227,7 @@ for src in ('A', 'B'):
         '[OIII]/Hbeta': OIIIbeta,
         '[OIII]/Hbeta_err': OIIIbeta_err,
     }
-
+"""
     print("=" * 20)
     print(f"Source {src}")
     print("=" * 20)
@@ -222,7 +244,7 @@ for src in ('A', 'B'):
         f"log([OIII]/Hbeta) for source {src}: {log_OIIIbeta} +- {log_OIIIbeta_err}"
     )
     print(f"E(B-V) for source {src}: {E_BV} +- {E_BV_err}")
-
+"""
 ratios_A = ratios_out['A']
 ratios_B = ratios_out['B']
 
@@ -336,3 +358,7 @@ with open('./output/tabling/A_ratios_improved.pkl', 'wb') as fA:
     dill.dump(ratios_A, fA)
 with open('./output/tabling/B_ratios_improved.pkl', 'wb') as fB:
     dill.dump(ratios_B, fB)
+print("*= 20")
+print(ratios_A)
+print("*= 20")
+print(ratios_B)

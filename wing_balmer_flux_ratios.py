@@ -1,30 +1,28 @@
 import dill
 import numpy as np
 
+from multiple_gaussian_integration import LINES, load_model, load_tie_map, flux_and_uncert
+
 # ======================================
 # initialize information
 # ======================================
 # NOTE : flux units are in ergs/s/cm^2 /Angstrom
 
-# component_fluxes['B'] / component_flux_uncerts['B'] in each *_fluxes.pkl
-# (written by multiple_gaussian_integration.py) is ordered [red_wing, central,
-# blue_wing] -- confirmed by comparing the fitted means of each line's
-# B_indices components (highest mean = reddest, listed first).
+# Source B's components in each Balmer line's joint-tied-fit model are
+# ordered [red_wing, central, blue_wing] in LINES[line]['B_indices'] (see
+# balmer_joint_gaussian_fitting.py's index layout) -- flux for each wing is
+# computed directly from the joint fit model + tie_map, not from a
+# separately-run multiple_gaussian_integration.py output, so this always
+# reflects the current joint-fit model.
 WING_NAMES = ['red_wing', 'central', 'blue_wing']
+BALMER_LINES = ('Halpha', 'Hbeta', 'Hgamma')
 
-LINE_PKLS = {
-    'Halpha': './output/improved_gaussians/Halpha/Halpha_fluxes.pkl',
-    'Hbeta': './output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl',
-    'Hgamma': './output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl',
-}
-
-
-def load_pkl(path):
-    with open(path, 'rb') as f:
-        return dill.load(f)
-
-
-data = {name: load_pkl(path) for name, path in LINE_PKLS.items()}
+models = {}
+tie_maps = {}
+for line in BALMER_LINES:
+    cfg = LINES[line]
+    models[line] = load_model(cfg['pkl'])
+    tie_maps[line] = load_tie_map(cfg['pkl'])
 
 
 # define calculate ratios function
@@ -39,9 +37,9 @@ def ratios(num, denom, num_uncert, denom_uncert):
 results = {}
 for j, wing in enumerate(WING_NAMES):
     wing_data = {}
-    for line in ('Halpha', 'Hbeta', 'Hgamma'):
-        flux = data[line]['component_fluxes']['B'][j]
-        uncert = data[line]['component_flux_uncerts']['B'][j]
+    for line in BALMER_LINES:
+        idx = LINES[line]['B_indices'][j]
+        flux, uncert = flux_and_uncert(models[line], [idx], tie_maps[line])
         wing_data[line] = {'flux': flux, 'flux_uncert': uncert}
 
     ab, ab_uncert = ratios(wing_data['Halpha']['flux'],
