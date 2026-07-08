@@ -18,18 +18,16 @@ z_B = 1.677
 
 rest = {
     'Halpha': 6562.819,
+    '[OIII]5007': 5006.843,
+    '[OIII]4959': 4958.911,
     'Hbeta': 4861.333,
-    'Hgamma': 4340.47,
 }
-line_order = ['Halpha', 'Hbeta', 'Hgamma']
+line_order = ['Halpha', '[OIII]5007', '[OIII]4959', 'Hbeta']
 
 # Hbeta's window contains a genuine gap of NaN flux/noise pixels between the
 # A and B peaks (~13015.8-13020.6 AA observed, same gap masked in
 # infinite_gaussians.py) -- excluded explicitly here (on top of the NaN
 # filter below) so it's documented and also so it can be shaded on the plot.
-# Hgamma's excluded region, unlike Hbeta's, is NOT missing/NaN data -- it's
-# real (finite) pixels with a noisy-but-real spike (noise jumps ~0.9->2.2
-# there), so it gets its own label rather than "NaN gap".
 mask_ranges = {
     'Hbeta': (13015.8, 13020.6, 'missing data (NaN gap)'),
     #'Hgamma': (11622.4, 11625, 'excluded (noisy spike)'),
@@ -78,9 +76,7 @@ WindowedConst1D = custom_model(_windowed_const)
 
 # ==================
 # master components (free): Halpha's 5 components (A: central, red wing;
-# B: red, central, blue). Source A has no blue wing for any line -- Halpha
-# never had one, and it's been removed from Hbeta/Hgamma too -- so every
-# tied component now anchors directly to one of these 5.
+# B: red, central, blue). 
 # ==================
 master_guesses = {
     'Halpha_A_central': {
@@ -149,17 +145,17 @@ def build_tied(label, ref_idx, line_ratio, amplitude_guess, amplitude_bound):
     return g
 
 
-A_INDICES = {'Halpha': [0, 1], 'Hbeta': [5, 6], 'Hgamma': [10, 11]}
+A_INDICES = {'Halpha': [0, 1], '[OIII]5007': [5, 6],'[OIII]4959': [10,11], 'Hbeta': [15,16]}
 B_INDICES = {
     'Halpha': [2, 3, 4],
-    'Hbeta': [7, 8, 9],
-    'Hgamma': [12, 13, 14]
+    '[OIII]5007': [7, 8, 9],
+    '[OIII]4959': [12, 13,14],
+    'Hbeta': [17, 18, 19]
 }
 
 colors = {
     ('A', 'central'): 'purple',
     ('A', 'red'): 'orangered',
-    ('A', 'blue'): 'deepskyblue',
     ('B', 'central'): 'darkorange',
     ('B', 'red'): 'crimson',
     ('B', 'blue'): 'royalblue',
@@ -236,11 +232,13 @@ if __name__ == "__main__":
     # index layout (fixed order, referenced by the .tied callables above)
     #  0: Halpha_A_central   1: Halpha_A_red
     #  2: Halpha_B_red       3: Halpha_B_central   4: Halpha_B_blue
-    #  5: Hbeta_A_central (tied 0)   6: Hbeta_A_red (tied 1)
-    #  7: Hbeta_B_red (tied 2)   8: Hbeta_B_central (tied 3)   9: Hbeta_B_blue (tied 4)
-    # 10: Hgamma_A_central (tied 0)  11: Hgamma_A_red (tied 1)
-    # 12: Hgamma_B_red (tied 2)  13: Hgamma_B_central (tied 3)  14: Hgamma_B_blue (tied 4)
-    # 15: continuum_Halpha  16: continuum_Hbeta  17: continuum_Hgamma
+    #  5: [OIII]5007_A_central (tied 0)   6: [OIII]5007_A_red (tied 1)
+    #  7: [OIII]5007_B_red (tied 2)   8: [OIII]5007_B_central (tied 3)   9: [OIII]5007_B_blue (tied 4)
+    # 10: [OIII]4959_A_central (tied 0)  11: [OIII]4959_A_red (tied 1)
+    # 12: [OIII]4959_B_red (tied 2)  13: [OIII]4959_B_central (tied 3)  14: [OIII]4959_B_blue (tied 4)
+    # 15: Hbeta_A_central (tied 0)  16: Hbeta_A_red (tied 1) 17: Hbeta_B_red (tied 2) 
+    # 18: Hbeta_B_central (tied 3) 19: Hbeta_B_blue (tied 4)
+    # 20: continuum_Halpha  21: continuum_[OIII]5007  22: continuum_[OIII]4939 23: continuum_Hbeta
     # ==================
     gaussians = []
 
@@ -250,23 +248,33 @@ if __name__ == "__main__":
     gaussians.append(build_master('Halpha_B_central', rest['Halpha']))  # 3
     gaussians.append(build_master('Halpha_B_blue', rest['Halpha']))  # 4
 
+
+    r_OIII5_ha = rest['[OIII]5007'] / rest['Halpha']
+    gaussians.append(
+        build_tied('[OIII]5007_A_central', 0, r_OIII5_ha, 50, (0, None)))  # 5
+    gaussians.append(build_tied('[OIII]5007_A_red', 1, r_OIII5_ha, 10, (0, None)))  # 6
+    gaussians.append(build_tied('[OIII]5007_B_red', 2, r_OIII5_ha, 1, (0, None)))  # 7
+    gaussians.append(
+        build_tied('[OIII]5007_B_central', 3, r_OIII5_ha, 2.5, (0, None)))  # 8
+    gaussians.append(build_tied('[OIII]5007_B_blue', 4, r_OIII5_ha, 1, (0, None)))  # 9
+
+    r_OIII4_ha = rest['[OIII]4959'] / rest['Halpha']
+    gaussians.append(
+        build_tied('[OIII]4959_A_central', 0, r_OIII4_ha, 50, (0, None)))  # 10
+    gaussians.append(build_tied('[OIII]4959_A_red', 1, r_OIII4_ha, 10, (0, None)))  # 11
+    gaussians.append(build_tied('[OIII]4959_B_red', 2, r_OIII4_ha, 1, (0, None)))  # 12
+    gaussians.append(
+        build_tied('[OIII]4959_B_central', 3, r_OIII4_ha, 2.5, (0, None)))  # 13
+    gaussians.append(build_tied('[OIII]4959_B_blue', 4, r_OIII4_ha, 1, (0, None)))  # 14
+
     r_hb_ha = rest['Hbeta'] / rest['Halpha']
     gaussians.append(
-        build_tied('Hbeta_A_central', 0, r_hb_ha, 6, (0, None)))  # 5
-    gaussians.append(build_tied('Hbeta_A_red', 1, r_hb_ha, 1.5, (0, None)))  # 6
-    gaussians.append(build_tied('Hbeta_B_red', 2, r_hb_ha, 1.5, (0, None)))  # 7
+        build_tied('Hbeta_A_central', 0, r_hb_ha, 50, (0, None)))  # 15
+    gaussians.append(build_tied('Hbeta_A_red', 1, r_hb_ha, 10, (0, None)))  # 16
+    gaussians.append(build_tied('Hbeta_B_red', 2, r_hb_ha, 1, (0, None)))  # 17
     gaussians.append(
-        build_tied('Hbeta_B_central', 3, r_hb_ha, 4, (0, None)))  # 8
-    gaussians.append(build_tied('Hbeta_B_blue', 4, r_hb_ha, 1.5, (0, None)))  # 9
-
-    r_hg_ha = rest['Hgamma'] / rest['Halpha']
-    gaussians.append(
-        build_tied('Hgamma_A_central', 0, r_hg_ha, 3, (0, None)))  # 10
-    gaussians.append(build_tied('Hgamma_A_red', 1, r_hg_ha, 1, (0, None)))  # 11
-    gaussians.append(build_tied('Hgamma_B_red', 2, r_hg_ha, 1, (0, None)))  # 12
-    gaussians.append(
-        build_tied('Hgamma_B_central', 3, r_hg_ha, 2.5, (0, None)))  # 13
-    gaussians.append(build_tied('Hgamma_B_blue', 4, r_hg_ha, 1, (0, None)))  # 14
+        build_tied('Hbeta_B_central', 3, r_hb_ha, 2.5, (0, None)))  # 18
+    gaussians.append(build_tied('Hbeta_B_blue', 4, r_hb_ha, 1, (0, None)))  # 19
 
     continua = []
     for name in line_order:
@@ -296,22 +304,6 @@ if __name__ == "__main__":
                            weights=1.0 / noise_all,
                            maxiter=5000)
 
-    # sanity check on the tying: confirm each tied mean/stddev matches its
-    # master scaled by the rest-wavelength ratio
-    print("Tying sanity check (tied value / master value vs expected ratio):")
-    tie_checks = [
-        (5, 0, r_hb_ha), (6, 1, r_hb_ha), (7, 2, r_hb_ha), (8, 3, r_hb_ha),
-        (9, 4, r_hb_ha), (10, 0, r_hg_ha), (11, 1, r_hg_ha), (12, 2, r_hg_ha),
-        (13, 3, r_hg_ha), (14, 4, r_hg_ha)
-    ]
-    for tied_idx, ref_idx, ratio in tie_checks:
-        mean_actual = getattr(bestfit_model, f'mean_{tied_idx}').value / getattr(
-            bestfit_model, f'mean_{ref_idx}').value
-        std_actual = getattr(bestfit_model,
-                             f'stddev_{tied_idx}').value / getattr(
-                                 bestfit_model, f'stddev_{ref_idx}').value
-        print(f"  {tied_idx}<-{ref_idx}: mean ratio {mean_actual:.6f}, "
-             f"stddev ratio {std_actual:.6f}, expected {ratio:.6f}")
 
     # ==================
     # bake tied params to fixed constants before saving, recording the tie
@@ -395,7 +387,7 @@ if __name__ == "__main__":
         ax[0].set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
         ax[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
         ax[0].xaxis.set_minor_locator(MultipleLocator(1))
-        ax[0].set_title(f"{name}  | Balmer-only joint tied fit |  z_A={z_A}  z_B={z_B}",
+        ax[0].set_title(f"{name}  |  joint tied fit with [OIII]  |  z_A={z_A}  z_B={z_B}",
                         fontsize=12)
         ax[0].legend(frameon=False, fontsize=8)
 
@@ -442,8 +434,8 @@ if __name__ == "__main__":
         )
 
         fig.savefig(
-            f'./output/joint_fit/Balmer/{name}_joint_tied_fit.png')
+            f'./output/joint_fit/OIII/{name}_joint_tied_fit_OIII.png')
         with open(
-                f'./output/joint_fit/Balmer/{name}_joint_tied_fit.pkl',
+                f'./output/joint_fit/OIII/{name}_joint_tied_fit_OIII.pkl',
                 'wb') as f:
             dill.dump({'model': bestfit_model, 'tie_map': tie_map}, f)

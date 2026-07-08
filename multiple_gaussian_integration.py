@@ -20,22 +20,22 @@ LINES = {
         # baked ties (see tie_map/load_tie_map), so flux_and_uncert's tie_map
         # handling already propagates cross-line uncertainty correctly -- no
         # separate `tie` Monte Carlo config needed.
-        'pkl': './output/improved_gaussians/joint_fit/Halpha_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/Balmer/Halpha_joint_tied_fit.pkl',
         'A_indices': [0, 1],
         'B_indices': [2, 3, 4],
-        'save': './output/improved_gaussians/Halpha/Halpha_fluxes.pkl',
+        'save': './output/joint_fit/Balmer/Halpha_fluxes.pkl',
     },
     'Hbeta': {
-        'pkl': './output/improved_gaussians/joint_fit/Hbeta_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/Balmer/Hbeta_joint_tied_fit.pkl',
         'A_indices': [5, 6],
         'B_indices': [7, 8, 9],
-        'save': './output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl',
+        'save': './output/joint_fit/Balmer/Hbeta_fluxes.pkl',
     },
     'Hgamma': {
-        'pkl': './output/improved_gaussians/joint_fit/Hgamma_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/Balmer/Hgamma_joint_tied_fit.pkl',
         'A_indices': [10, 11],
         'B_indices': [12, 13, 14],
-        'save': './output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl',
+        'save': './output/joint_fit/Balmer/Hgamma_fluxes.pkl',
     },
     'Hdelta': {
         'pkl': './output/improved_gaussians/Hdelta/2_gaussian.pkl',

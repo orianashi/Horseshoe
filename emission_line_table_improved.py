@@ -12,9 +12,9 @@ def load_pkl(path):
     with open(path, 'rb') as f:
         return dill.load(f)
 
-Halpha_new = load_pkl('./output/improved_gaussians/Halpha/Halpha_fluxes.pkl')
-Hbeta_new = load_pkl('./output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl')
-Hgamma_new = load_pkl('./output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl')
+Halpha_new = load_pkl('./output/joint_fit/Balmer/Halpha_fluxes.pkl')
+Hbeta_new = load_pkl('./output/joint_fit/Balmer/Hbeta_fluxes.pkl')
+Hgamma_new = load_pkl('./output/joint_fit/Balmer/Hgamma_fluxes.pkl')
 OIII4959_new = load_pkl('./output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl')
 OIII5007_new = load_pkl('./output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl')
 OII_new = load_pkl('./output/improved_gaussians/OII/OII_fluxes.pkl')
