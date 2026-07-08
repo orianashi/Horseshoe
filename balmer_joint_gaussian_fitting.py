@@ -78,8 +78,9 @@ WindowedConst1D = custom_model(_windowed_const)
 
 # ==================
 # master components (free): Halpha's 5 components (A: central, red wing;
-# B: red, central, blue), plus Hgamma's source-A blue wing (the one
-# component with no Halpha-A counterpart to tie to)
+# B: red, central, blue). Source A has no blue wing for any line -- Halpha
+# never had one, and it's been removed from Hbeta/Hgamma too -- so every
+# tied component now anchors directly to one of these 5.
 # ==================
 master_guesses = {
     'Halpha_A_central': {
@@ -122,14 +123,6 @@ master_guesses = {
         'amplitude_bound': (0, None),
         'mean_range': 5,
     },
-    'Hgamma_A_blue': {
-        'z_guess': z_A - 0.0006,
-        'amplitude': 0.7,
-        'stddev': 1.5,
-        'stddev_bounds': (0, 4),
-        'amplitude_bound': (0, None),
-        'mean_range': 5,
-    },
 }
 
 
@@ -156,11 +149,11 @@ def build_tied(label, ref_idx, line_ratio, amplitude_guess, amplitude_bound):
     return g
 
 
-A_INDICES = {'Halpha': [0, 1], 'Hbeta': [5, 6, 7], 'Hgamma': [11, 12, 13]}
+A_INDICES = {'Halpha': [0, 1], 'Hbeta': [5, 6], 'Hgamma': [10, 11]}
 B_INDICES = {
     'Halpha': [2, 3, 4],
-    'Hbeta': [8, 9, 10],
-    'Hgamma': [14, 15, 16]
+    'Hbeta': [7, 8, 9],
+    'Hgamma': [12, 13, 14]
 }
 
 colors = {
@@ -243,11 +236,11 @@ if __name__ == "__main__":
     # index layout (fixed order, referenced by the .tied callables above)
     #  0: Halpha_A_central   1: Halpha_A_red
     #  2: Halpha_B_red       3: Halpha_B_central   4: Halpha_B_blue
-    #  5: Hbeta_A_central (tied 0)   6: Hbeta_A_red (tied 1)   7: Hbeta_A_blue (tied 13)
-    #  8: Hbeta_B_red (tied 2)   9: Hbeta_B_central (tied 3)   10: Hbeta_B_blue (tied 4)
-    # 11: Hgamma_A_central (tied 0)  12: Hgamma_A_red (tied 1)  13: Hgamma_A_blue (master)
-    # 14: Hgamma_B_red (tied 2)  15: Hgamma_B_central (tied 3)  16: Hgamma_B_blue (tied 4)
-    # 17: continuum_Halpha  18: continuum_Hbeta  19: continuum_Hgamma
+    #  5: Hbeta_A_central (tied 0)   6: Hbeta_A_red (tied 1)
+    #  7: Hbeta_B_red (tied 2)   8: Hbeta_B_central (tied 3)   9: Hbeta_B_blue (tied 4)
+    # 10: Hgamma_A_central (tied 0)  11: Hgamma_A_red (tied 1)
+    # 12: Hgamma_B_red (tied 2)  13: Hgamma_B_central (tied 3)  14: Hgamma_B_blue (tied 4)
+    # 15: continuum_Halpha  16: continuum_Hbeta  17: continuum_Hgamma
     # ==================
     gaussians = []
 
@@ -258,25 +251,22 @@ if __name__ == "__main__":
     gaussians.append(build_master('Halpha_B_blue', rest['Halpha']))  # 4
 
     r_hb_ha = rest['Hbeta'] / rest['Halpha']
-    r_hb_hg = rest['Hbeta'] / rest['Hgamma']
     gaussians.append(
         build_tied('Hbeta_A_central', 0, r_hb_ha, 6, (0, None)))  # 5
     gaussians.append(build_tied('Hbeta_A_red', 1, r_hb_ha, 1.5, (0, None)))  # 6
-    gaussians.append(build_tied('Hbeta_A_blue', 13, r_hb_hg, 1, (0, None)))  # 7
-    gaussians.append(build_tied('Hbeta_B_red', 2, r_hb_ha, 1.5, (0, None)))  # 8
+    gaussians.append(build_tied('Hbeta_B_red', 2, r_hb_ha, 1.5, (0, None)))  # 7
     gaussians.append(
-        build_tied('Hbeta_B_central', 3, r_hb_ha, 4, (0, None)))  # 9
-    gaussians.append(build_tied('Hbeta_B_blue', 4, r_hb_ha, 1.5, (0, None)))  # 10
+        build_tied('Hbeta_B_central', 3, r_hb_ha, 4, (0, None)))  # 8
+    gaussians.append(build_tied('Hbeta_B_blue', 4, r_hb_ha, 1.5, (0, None)))  # 9
 
     r_hg_ha = rest['Hgamma'] / rest['Halpha']
     gaussians.append(
-        build_tied('Hgamma_A_central', 0, r_hg_ha, 3, (0, None)))  # 11
-    gaussians.append(build_tied('Hgamma_A_red', 1, r_hg_ha, 1, (0, None)))  # 12
-    gaussians.append(build_master('Hgamma_A_blue', rest['Hgamma']))  # 13
-    gaussians.append(build_tied('Hgamma_B_red', 2, r_hg_ha, 1, (0, None)))  # 14
+        build_tied('Hgamma_A_central', 0, r_hg_ha, 3, (0, None)))  # 10
+    gaussians.append(build_tied('Hgamma_A_red', 1, r_hg_ha, 1, (0, None)))  # 11
+    gaussians.append(build_tied('Hgamma_B_red', 2, r_hg_ha, 1, (0, None)))  # 12
     gaussians.append(
-        build_tied('Hgamma_B_central', 3, r_hg_ha, 2.5, (0, None)))  # 15
-    gaussians.append(build_tied('Hgamma_B_blue', 4, r_hg_ha, 1, (0, None)))  # 16
+        build_tied('Hgamma_B_central', 3, r_hg_ha, 2.5, (0, None)))  # 13
+    gaussians.append(build_tied('Hgamma_B_blue', 4, r_hg_ha, 1, (0, None)))  # 14
 
     continua = []
     for name in line_order:
@@ -289,7 +279,10 @@ if __name__ == "__main__":
         cont.hi.fixed = True
         continua.append(cont)
 
-    CONT_INDICES = {name: 17 + i for i, name in enumerate(line_order)}
+    CONT_INDICES = {
+        name: len(gaussians) + i
+        for i, name in enumerate(line_order)
+    }
 
     compound_model = reduce(operator.add, gaussians + continua)
 
@@ -307,9 +300,9 @@ if __name__ == "__main__":
     # master scaled by the rest-wavelength ratio
     print("Tying sanity check (tied value / master value vs expected ratio):")
     tie_checks = [
-        (5, 0, r_hb_ha), (6, 1, r_hb_ha), (7, 13, r_hb_hg), (8, 2, r_hb_ha),
-        (9, 3, r_hb_ha), (10, 4, r_hb_ha), (11, 0, r_hg_ha), (12, 1, r_hg_ha),
-        (14, 2, r_hg_ha), (15, 3, r_hg_ha), (16, 4, r_hg_ha)
+        (5, 0, r_hb_ha), (6, 1, r_hb_ha), (7, 2, r_hb_ha), (8, 3, r_hb_ha),
+        (9, 4, r_hb_ha), (10, 0, r_hg_ha), (11, 1, r_hg_ha), (12, 2, r_hg_ha),
+        (13, 3, r_hg_ha), (14, 4, r_hg_ha)
     ]
     for tied_idx, ref_idx, ratio in tie_checks:
         mean_actual = getattr(bestfit_model, f'mean_{tied_idx}').value / getattr(

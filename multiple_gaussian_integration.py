@@ -14,12 +14,12 @@ import numpy as np
 LINES = {
     'Halpha': {
         # joint fit of Halpha+Hbeta+Hgamma (see balmer_joint_gaussian_fitting.py):
-        # source A has only 2 components (central, red wing); source B has 3
-        # (red, central, blue wing). All three lines' matching components share
-        # one compound model and one covariance matrix via real astropy `.tied`
-        # mean/stddev (ratio of rest wavelengths), so flux_and_uncert's existing
-        # `.tied` handling already propagates cross-line uncertainty correctly --
-        # no separate `tie` Monte Carlo config needed.
+        # source A has only 2 components (central, red wing) for every line;
+        # source B has 3 (red, central, blue wing). All three lines' matching
+        # components share one compound model and one covariance matrix via
+        # baked ties (see tie_map/load_tie_map), so flux_and_uncert's tie_map
+        # handling already propagates cross-line uncertainty correctly -- no
+        # separate `tie` Monte Carlo config needed.
         'pkl': './output/improved_gaussians/joint_fit/Halpha_joint_tied_fit.pkl',
         'A_indices': [0, 1],
         'B_indices': [2, 3, 4],
@@ -27,14 +27,14 @@ LINES = {
     },
     'Hbeta': {
         'pkl': './output/improved_gaussians/joint_fit/Hbeta_joint_tied_fit.pkl',
-        'A_indices': [5, 6, 7],
-        'B_indices': [8, 9, 10],
+        'A_indices': [5, 6],
+        'B_indices': [7, 8, 9],
         'save': './output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl',
     },
     'Hgamma': {
         'pkl': './output/improved_gaussians/joint_fit/Hgamma_joint_tied_fit.pkl',
-        'A_indices': [11, 12, 13],
-        'B_indices': [14, 15, 16],
+        'A_indices': [10, 11],
+        'B_indices': [12, 13, 14],
         'save': './output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl',
     },
     'Hdelta': {
