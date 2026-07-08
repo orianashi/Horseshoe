@@ -75,46 +75,47 @@ def _windowed_const(x, amplitude=1.0, lo=0.0, hi=1.0):
 WindowedConst1D = custom_model(_windowed_const)
 
 # ==================
-# master components (free): Halpha's 5 components (A: central, red wing;
-# B: red, central, blue). 
+# master components (free): [OIII]5007's 5 components (A: central, red wing;
+# B: red, central, blue). Everything else (Halpha, [OIII]4959, Hbeta) ties
+# its mean/stddev to these instead of to Halpha.
 # ==================
 master_guesses = {
-    'Halpha_A_central': {
+    '[OIII]5007_A_central': {
         'z_guess': z_A,
-        'amplitude': 12,
-        'stddev': 1.5,
+        'amplitude': 98,
+        'stddev': 1.8,
         'stddev_bounds': (0, 3),
         'amplitude_bound': (0, None),
         'mean_range': 3,
     },
-    'Halpha_A_red': {
+    '[OIII]5007_A_red': {
         'z_guess': z_A + 0.0006,
-        'amplitude': 3,
-        'stddev': 2,
+        'amplitude': 27,
+        'stddev': 1.6,
         'stddev_bounds': (0, 5),
         'amplitude_bound': (0, None),
         'mean_range': 5,
     },
-    'Halpha_B_red': {
+    '[OIII]5007_B_red': {
         'z_guess': z_B + 0.0006,
-        'amplitude': 3,
-        'stddev': 2,
+        'amplitude': 8,
+        'stddev': 2.6,
         'stddev_bounds': (0, 5),
         'amplitude_bound': (0, None),
         'mean_range': 5,
     },
-    'Halpha_B_central': {
+    '[OIII]5007_B_central': {
         'z_guess': z_B,
-        'amplitude': 8,
-        'stddev': 1.5,
+        'amplitude': 28,
+        'stddev': 2,
         'stddev_bounds': (0, 3),
         'amplitude_bound': (0, None),
         'mean_range': 3,
     },
-    'Halpha_B_blue': {
+    '[OIII]5007_B_blue': {
         'z_guess': z_B - 0.0006,
-        'amplitude': 3,
-        'stddev': 2,
+        'amplitude': 6,
+        'stddev': 2.2,
         'stddev_bounds': (0, 5),
         'amplitude_bound': (0, None),
         'mean_range': 5,
@@ -145,11 +146,11 @@ def build_tied(label, ref_idx, line_ratio, amplitude_guess, amplitude_bound):
     return g
 
 
-A_INDICES = {'Halpha': [0, 1], '[OIII]5007': [5, 6],'[OIII]4959': [10,11], 'Hbeta': [15,16]}
+A_INDICES = {'[OIII]5007': [0, 1], 'Halpha': [5, 6], '[OIII]4959': [10, 11], 'Hbeta': [15, 16]}
 B_INDICES = {
-    'Halpha': [2, 3, 4],
-    '[OIII]5007': [7, 8, 9],
-    '[OIII]4959': [12, 13,14],
+    '[OIII]5007': [2, 3, 4],
+    'Halpha': [7, 8, 9],
+    '[OIII]4959': [12, 13, 14],
     'Hbeta': [17, 18, 19]
 }
 
@@ -230,51 +231,51 @@ if __name__ == "__main__":
 
     # ==================
     # index layout (fixed order, referenced by the .tied callables above)
-    #  0: Halpha_A_central   1: Halpha_A_red
-    #  2: Halpha_B_red       3: Halpha_B_central   4: Halpha_B_blue
-    #  5: [OIII]5007_A_central (tied 0)   6: [OIII]5007_A_red (tied 1)
-    #  7: [OIII]5007_B_red (tied 2)   8: [OIII]5007_B_central (tied 3)   9: [OIII]5007_B_blue (tied 4)
+    #  0: [OIII]5007_A_central   1: [OIII]5007_A_red
+    #  2: [OIII]5007_B_red       3: [OIII]5007_B_central   4: [OIII]5007_B_blue
+    #  5: Halpha_A_central (tied 0)   6: Halpha_A_red (tied 1)
+    #  7: Halpha_B_red (tied 2)   8: Halpha_B_central (tied 3)   9: Halpha_B_blue (tied 4)
     # 10: [OIII]4959_A_central (tied 0)  11: [OIII]4959_A_red (tied 1)
     # 12: [OIII]4959_B_red (tied 2)  13: [OIII]4959_B_central (tied 3)  14: [OIII]4959_B_blue (tied 4)
-    # 15: Hbeta_A_central (tied 0)  16: Hbeta_A_red (tied 1) 17: Hbeta_B_red (tied 2) 
+    # 15: Hbeta_A_central (tied 0)  16: Hbeta_A_red (tied 1) 17: Hbeta_B_red (tied 2)
     # 18: Hbeta_B_central (tied 3) 19: Hbeta_B_blue (tied 4)
-    # 20: continuum_Halpha  21: continuum_[OIII]5007  22: continuum_[OIII]4939 23: continuum_Hbeta
+    # 20: continuum_Halpha  21: continuum_[OIII]5007  22: continuum_[OIII]4959 23: continuum_Hbeta
     # ==================
     gaussians = []
 
-    gaussians.append(build_master('Halpha_A_central', rest['Halpha']))  # 0
-    gaussians.append(build_master('Halpha_A_red', rest['Halpha']))  # 1
-    gaussians.append(build_master('Halpha_B_red', rest['Halpha']))  # 2
-    gaussians.append(build_master('Halpha_B_central', rest['Halpha']))  # 3
-    gaussians.append(build_master('Halpha_B_blue', rest['Halpha']))  # 4
+    gaussians.append(build_master('[OIII]5007_A_central', rest['[OIII]5007']))  # 0
+    gaussians.append(build_master('[OIII]5007_A_red', rest['[OIII]5007']))  # 1
+    gaussians.append(build_master('[OIII]5007_B_red', rest['[OIII]5007']))  # 2
+    gaussians.append(build_master('[OIII]5007_B_central', rest['[OIII]5007']))  # 3
+    gaussians.append(build_master('[OIII]5007_B_blue', rest['[OIII]5007']))  # 4
 
 
-    r_OIII5_ha = rest['[OIII]5007'] / rest['Halpha']
+    r_ha_oiii5 = rest['Halpha'] / rest['[OIII]5007']
     gaussians.append(
-        build_tied('[OIII]5007_A_central', 0, r_OIII5_ha, 50, (0, None)))  # 5
-    gaussians.append(build_tied('[OIII]5007_A_red', 1, r_OIII5_ha, 10, (0, None)))  # 6
-    gaussians.append(build_tied('[OIII]5007_B_red', 2, r_OIII5_ha, 1, (0, None)))  # 7
+        build_tied('Halpha_A_central', 0, r_ha_oiii5, 40, (0, None)))  # 5
+    gaussians.append(build_tied('Halpha_A_red', 1, r_ha_oiii5, 9, (0, None)))  # 6
+    gaussians.append(build_tied('Halpha_B_red', 2, r_ha_oiii5, 5, (0, None)))  # 7
     gaussians.append(
-        build_tied('[OIII]5007_B_central', 3, r_OIII5_ha, 2.5, (0, None)))  # 8
-    gaussians.append(build_tied('[OIII]5007_B_blue', 4, r_OIII5_ha, 1, (0, None)))  # 9
+        build_tied('Halpha_B_central', 3, r_ha_oiii5, 12, (0, None)))  # 8
+    gaussians.append(build_tied('Halpha_B_blue', 4, r_ha_oiii5, 5, (0, None)))  # 9
 
-    r_OIII4_ha = rest['[OIII]4959'] / rest['Halpha']
+    r_oiii4_oiii5 = rest['[OIII]4959'] / rest['[OIII]5007']
     gaussians.append(
-        build_tied('[OIII]4959_A_central', 0, r_OIII4_ha, 50, (0, None)))  # 10
-    gaussians.append(build_tied('[OIII]4959_A_red', 1, r_OIII4_ha, 10, (0, None)))  # 11
-    gaussians.append(build_tied('[OIII]4959_B_red', 2, r_OIII4_ha, 1, (0, None)))  # 12
+        build_tied('[OIII]4959_A_central', 0, r_oiii4_oiii5, 34, (0, None)))  # 10
+    gaussians.append(build_tied('[OIII]4959_A_red', 1, r_oiii4_oiii5, 9, (0, None)))  # 11
+    gaussians.append(build_tied('[OIII]4959_B_red', 2, r_oiii4_oiii5, 3, (0, None)))  # 12
     gaussians.append(
-        build_tied('[OIII]4959_B_central', 3, r_OIII4_ha, 2.5, (0, None)))  # 13
-    gaussians.append(build_tied('[OIII]4959_B_blue', 4, r_OIII4_ha, 1, (0, None)))  # 14
+        build_tied('[OIII]4959_B_central', 3, r_oiii4_oiii5, 10, (0, None)))  # 13
+    gaussians.append(build_tied('[OIII]4959_B_blue', 4, r_oiii4_oiii5, 1.5, (0, None)))  # 14
 
-    r_hb_ha = rest['Hbeta'] / rest['Halpha']
+    r_hb_oiii5 = rest['Hbeta'] / rest['[OIII]5007']
     gaussians.append(
-        build_tied('Hbeta_A_central', 0, r_hb_ha, 50, (0, None)))  # 15
-    gaussians.append(build_tied('Hbeta_A_red', 1, r_hb_ha, 10, (0, None)))  # 16
-    gaussians.append(build_tied('Hbeta_B_red', 2, r_hb_ha, 1, (0, None)))  # 17
+        build_tied('Hbeta_A_central', 0, r_hb_oiii5, 15, (0, None)))  # 15
+    gaussians.append(build_tied('Hbeta_A_red', 1, r_hb_oiii5, 4, (0, None)))  # 16
+    gaussians.append(build_tied('Hbeta_B_red', 2, r_hb_oiii5, 2, (0, None)))  # 17
     gaussians.append(
-        build_tied('Hbeta_B_central', 3, r_hb_ha, 2.5, (0, None)))  # 18
-    gaussians.append(build_tied('Hbeta_B_blue', 4, r_hb_ha, 1, (0, None)))  # 19
+        build_tied('Hbeta_B_central', 3, r_hb_oiii5, 6, (0, None)))  # 18
+    gaussians.append(build_tied('Hbeta_B_blue', 4, r_hb_oiii5, 1.5, (0, None)))  # 19
 
     continua = []
     for name in line_order:
@@ -387,7 +388,7 @@ if __name__ == "__main__":
         ax[0].set_xlabel("Observed Wavelength [Angstroms]", fontsize=15)
         ax[0].set_ylabel("Normalised Flux [erg/s/cm2/AA]", fontsize=15)
         ax[0].xaxis.set_minor_locator(MultipleLocator(1))
-        ax[0].set_title(f"{name}  |  joint tied fit (with [OIII] tied to Halpha)  |  z_A={z_A}  z_B={z_B}",
+        ax[0].set_title(f"{name}  |  joint tied fit (tied to [OIII]5007)  |  z_A={z_A}  z_B={z_B}",
                         fontsize=12)
         ax[0].legend(frameon=False, fontsize=8)
 
@@ -434,8 +435,8 @@ if __name__ == "__main__":
         )
 
         fig.savefig(
-            f'./output/joint_fit/OIII/{name}_joint_tied_fit_OIII.png')
+            f'./output/joint_fit/OIII_tie/{name}_joint_tied_fit.png')
         with open(
-                f'./output/joint_fit/OIII/{name}_joint_tied_fit_OIII.pkl',
+                f'./output/joint_fit/OIII_tie/{name}_joint_tied_fit.pkl',
                 'wb') as f:
             dill.dump({'model': bestfit_model, 'tie_map': tie_map}, f)
