@@ -61,7 +61,6 @@ noise_clean = noise_trim[~bad]
 lam_fit = lam_clean
 flux_fit = flux_clean
 noise_fit = noise_clean
-
 """
 # =================
 # tie source B's 3 velocity components to source B's Halpha decomposition
@@ -97,30 +96,31 @@ sigma_instr = 17569 / (5600 * 2.355)
 
 """
 gauss_guesses = {
-     '1': {
+    '1': {
         # main core of source A
         'z_guess': z_A + 0.0001,
         'amplitude': 12,
         'stddev': 1.5,
-        'stddev_bounds': (0,3 ),
+        'stddev_bounds': (0, 3),
         'amplitude_bound': (0, None),
         'mean_range': 3,
     },
-     '2': {
+    '2': {
         'z_guess': z_A - 0.0002,
         'amplitude': 2,
         'stddev': 1.5,
-        'stddev_bounds': (0,3 ),
+        'stddev_bounds': (0, 3),
         'amplitude_bound': (0, 6),
         'mean_range': 3,
-    },    
+    },
     '3': {
-        'z_guess' : z_B,
+        'z_guess': z_B,
         'amplitude': 5,
         'stddev': 1.5,
         'stddev_bounds': (0, 5),
         'amplitude_bound': (1, None),
-        'mean_range': 3  },
+        'mean_range': 3
+    },
 }
 
 # plot
@@ -144,9 +144,6 @@ ax.axvline(line * (1 + gauss_guesses['2']['z_guess']),
            ls='--',
            alpha=0.5,
            lw=0.8)
-
-
-
 """
 for tied in B_tied:
     ax.axvline(tied['mean'], color='teal', ls='--', alpha=0.5, lw=0.8)
@@ -175,7 +172,7 @@ def create_gaussians(source_label):
                           amplitude=gauss_params['amplitude'],
                           stddev=gauss_params['stddev']))
 
-    # set bounds for where the mean of the reference line can be, let everything else vary freely 
+    # set bounds for where the mean of the reference line can be, let everything else vary freely
     ref_mean_guess = line * (1 + gauss_params["z_guess"])
     gaussians[0].amplitude.bounds = gauss_params['amplitude_bound']
     gaussians[0].stddev.bounds = gauss_params['stddev_bounds']
@@ -216,9 +213,7 @@ continuum = models.Const1D(amplitude=np.nanmedian(flux_fit),
                            name="continuum")  #makes a flat baseline
 
 # combine into a compound model
-concat_gaussians = gs_1 + gs_2 + gs_3 + [
-    continuum
-]
+concat_gaussians = gs_1 + gs_2 + gs_3 + [continuum]
 compound_model = reduce(operator.add, concat_gaussians)
 
 # ==================
@@ -297,7 +292,7 @@ ax[0].legend(frameon=False)
 # sigma (i.e. the "pull") so we can read significance straight off the plot:
 # if the model + noise are correct, these should scatter ~N(0,1)
 # computed only on the masked-in points, since those are what the fitter saw
-residual_sigma = (flux_clean - bestfit_model(lam_clean))/noise_clean
+residual_sigma = (flux_clean - bestfit_model(lam_clean)) / noise_clean
 ax[1].scatter(
     lam_clean,
     residual_sigma,
@@ -318,7 +313,7 @@ plt.show()
 # is a good fit and noise_fit is a correctly-calibrated 1-sigma uncertainty;
 # >>1 means either the model is missing real structure or noise is underestimated
 n_free = sum(1 for name in bestfit_model.param_names
-            if not getattr(bestfit_model, name).fixed)
+             if not getattr(bestfit_model, name).fixed)
 dof = len(lam_clean) - n_free
 chi2 = np.sum(residual_sigma**2)
 print(f"chi2 = {chi2:.1f}, dof = {dof}, reduced chi2 = {chi2 / dof:.2f}")
@@ -328,19 +323,20 @@ print(f"chi2 = {chi2:.1f}, dof = {dof}, reduced chi2 = {chi2 / dof:.2f}")
 # array, since most of that array is line-free continuum that would dilute
 # how well the lines themselves are fit
 n_sigma_window = 3.5
-near_line_mask = reduce(
-    operator.or_,
-    [np.abs(lam_clean - bestfit_model[i].mean.value) <=
-     n_sigma_window * bestfit_model[i].stddev.value for i in range(3)])
+near_line_mask = reduce(operator.or_, [
+    np.abs(lam_clean - bestfit_model[i].mean.value)
+    <= n_sigma_window * bestfit_model[i].stddev.value for i in range(3)
+])
 residual_sigma_near = residual_sigma[near_line_mask]
 
-print(f"Points near emission lines (within {n_sigma_window}sigma of a line center): "
-      f"{len(residual_sigma_near)} / {len(residual_sigma)}")
 print(
-     f"Within 1sig: {np.sum(np.abs(residual_sigma_near)<=1)} ({(100*(np.sum(np.abs(residual_sigma_near)<=1))/len(residual_sigma_near)):.2f}%), "
-     f"Within 2sig: {np.sum(np.abs(residual_sigma_near) <= 2)} ({(100*(np.sum(np.abs(residual_sigma_near)<=2))/len(residual_sigma_near)):.2f}%), "
-     f"Within 3sig: {np.sum(np.abs(residual_sigma_near) <= 3)} ({ (100*(np.sum(np.abs(residual_sigma_near)<=3))/len(residual_sigma_near)):.2f}%)")
-
+    f"Points near emission lines (within {n_sigma_window}sigma of a line center): "
+    f"{len(residual_sigma_near)} / {len(residual_sigma)}")
+print(
+    f"Within 1sig: {np.sum(np.abs(residual_sigma_near)<=1)} ({(100*(np.sum(np.abs(residual_sigma_near)<=1))/len(residual_sigma_near)):.2f}%), "
+    f"Within 2sig: {np.sum(np.abs(residual_sigma_near) <= 2)} ({(100*(np.sum(np.abs(residual_sigma_near)<=2))/len(residual_sigma_near)):.2f}%), "
+    f"Within 3sig: {np.sum(np.abs(residual_sigma_near) <= 3)} ({ (100*(np.sum(np.abs(residual_sigma_near)<=3))/len(residual_sigma_near)):.2f}%)"
+)
 
 # save
 fig.savefig('./output/improved_gaussians/Hdelta/3_gaussian_constrained.png')

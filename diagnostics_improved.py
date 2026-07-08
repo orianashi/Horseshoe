@@ -8,6 +8,7 @@ plt.ion()
 z_A = 1.679  # redshift for source A
 z_B = 1.677  # redshift for source B
 
+
 # =======
 # un-pikl: improved (multi-gaussian, full-covariance) fluxes where available
 # =======
@@ -15,11 +16,14 @@ def load_pkl(path):
     with open(path, 'rb') as f:
         return dill.load(f)
 
+
 Halpha_new = load_pkl('./output/improved_gaussians/Halpha/Halpha_fluxes.pkl')
 Hbeta_new = load_pkl('./output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl')
 Hgamma_new = load_pkl('./output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl')
-OIII4959_new = load_pkl('./output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl')
-OIII5007_new = load_pkl('./output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl')
+OIII4959_new = load_pkl(
+    './output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl')
+OIII5007_new = load_pkl(
+    './output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl')
 OII_new = load_pkl('./output/improved_gaussians/OII/OII_fluxes.pkl')
 
 # lines with no improved_gaussians refit yet: fall back to legacy single-gaussian fluxes
@@ -27,18 +31,36 @@ NIIalphas_legacy = load_pkl('./output/NII/NII_Halpha_ratios.pkl')
 
 # NII_Halpha_ratios.pkl['fluxes'][src] = [flux_Halpha, flux_NII6583, flux_NII6548]
 NII6583 = {
-    'flux': {src: NIIalphas_legacy['fluxes'][src][1] for src in ('A', 'B')},
-    'uncert': {src: NIIalphas_legacy['flux_uncerts'][src][1] for src in ('A', 'B')},
+    'flux': {
+        src: NIIalphas_legacy['fluxes'][src][1]
+        for src in ('A', 'B')
+    },
+    'uncert': {
+        src: NIIalphas_legacy['flux_uncerts'][src][1]
+        for src in ('A', 'B')
+    },
 }
 # OII_fluxes.pkl['component_fluxes'][src] = [flux_3726, flux_3729], both directly
 # fit (and full-covariance propagated) by the improved 4-gaussian OII model.
 OII3726 = {
-    'flux': {src: OII_new['component_fluxes'][src][0] for src in ('A', 'B')},
-    'uncert': {src: OII_new['component_flux_uncerts'][src][0] for src in ('A', 'B')},
+    'flux': {
+        src: OII_new['component_fluxes'][src][0]
+        for src in ('A', 'B')
+    },
+    'uncert': {
+        src: OII_new['component_flux_uncerts'][src][0]
+        for src in ('A', 'B')
+    },
 }
 OII3729 = {
-    'flux': {src: OII_new['component_fluxes'][src][1] for src in ('A', 'B')},
-    'uncert': {src: OII_new['component_flux_uncerts'][src][1] for src in ('A', 'B')},
+    'flux': {
+        src: OII_new['component_fluxes'][src][1]
+        for src in ('A', 'B')
+    },
+    'uncert': {
+        src: OII_new['component_flux_uncerts'][src][1]
+        for src in ('A', 'B')
+    },
 }
 
 
@@ -91,11 +113,11 @@ def bpt_line(log_NIIalpha, z):
     denom = (log_NIIalpha - 0.02 - 0.1833 * z)
     return 0.61 / denom + 1.2 + 0.03 * z
 
+
 # ====================================
 # per-line balmer decrement
 
 print(Halpha_new['fluxes']['A'])
-
 
 # ====================================
 # recompute ratios per source, swapping in improved fluxes where available
@@ -105,39 +127,34 @@ logs = {}
 
 for src in ('A', 'B'):
     NIIalpha, NIIalpha_err = ratios(NII6583['flux'][src],
-                                     Halpha_new['fluxes'][src],
-                                     NII6583['uncert'][src],
-                                     Halpha_new['flux_uncerts'][src])
+                                    Halpha_new['fluxes'][src],
+                                    NII6583['uncert'][src],
+                                    Halpha_new['flux_uncerts'][src])
     OIIIbeta, OIIIbeta_err = ratios(OIII5007_new['fluxes'][src],
-                                     Hbeta_new['fluxes'][src],
-                                     OIII5007_new['flux_uncerts'][src],
-                                     Hbeta_new['flux_uncerts'][src])
+                                    Hbeta_new['fluxes'][src],
+                                    OIII5007_new['flux_uncerts'][src],
+                                    Hbeta_new['flux_uncerts'][src])
     Halpha_Hbeta, Halpha_Hbeta_err = ratios(Halpha_new['fluxes'][src],
-                                             Hbeta_new['fluxes'][src],
-                                             Halpha_new['flux_uncerts'][src],
-                                             Hbeta_new['flux_uncerts'][src])
+                                            Hbeta_new['fluxes'][src],
+                                            Halpha_new['flux_uncerts'][src],
+                                            Hbeta_new['flux_uncerts'][src])
     Hgamma_Hbeta, Hgamma_Hbeta_err = ratios(Hgamma_new['fluxes'][src],
-                                             Hbeta_new['fluxes'][src],
-                                             Hgamma_new['flux_uncerts'][src],
-                                             Hbeta_new['flux_uncerts'][src])
+                                            Hbeta_new['fluxes'][src],
+                                            Hgamma_new['flux_uncerts'][src],
+                                            Hbeta_new['flux_uncerts'][src])
     o3n2, o3n2_err = ratios(OIIIbeta, NIIalpha, OIIIbeta_err, NIIalpha_err)
 
-    R23_val, R23_err = R23(OII3726['flux'][src], OII3729['flux'][src],
-                            OIII4959_new['fluxes'][src],
-                            OIII5007_new['fluxes'][src],
-                            Hbeta_new['fluxes'][src],
-                            OII3726['uncert'][src], OII3729['uncert'][src],
-                            OIII4959_new['flux_uncerts'][src],
-                            OIII5007_new['flux_uncerts'][src],
-                            Hbeta_new['flux_uncerts'][src])
-    kR23_val, kR23_err = kewley_R23(OII3726['flux'][src],
-                                     OIII4959_new['fluxes'][src],
-                                     OIII5007_new['fluxes'][src],
-                                     Hbeta_new['fluxes'][src],
-                                     OII3726['uncert'][src],
-                                     OIII4959_new['flux_uncerts'][src],
-                                     OIII5007_new['flux_uncerts'][src],
-                                     Hbeta_new['flux_uncerts'][src])
+    R23_val, R23_err = R23(
+        OII3726['flux'][src], OII3729['flux'][src],
+        OIII4959_new['fluxes'][src], OIII5007_new['fluxes'][src],
+        Hbeta_new['fluxes'][src], OII3726['uncert'][src],
+        OII3729['uncert'][src], OIII4959_new['flux_uncerts'][src],
+        OIII5007_new['flux_uncerts'][src], Hbeta_new['flux_uncerts'][src])
+    kR23_val, kR23_err = kewley_R23(
+        OII3726['flux'][src], OIII4959_new['fluxes'][src],
+        OIII5007_new['fluxes'][src], Hbeta_new['fluxes'][src],
+        OII3726['uncert'][src], OIII4959_new['flux_uncerts'][src],
+        OIII5007_new['flux_uncerts'][src], Hbeta_new['flux_uncerts'][src])
 
     log_arg = Halpha_Hbeta / 2.86
     log_arg_err = Halpha_Hbeta_err / 2.86
@@ -197,12 +214,13 @@ for src in ('A', 'B'):
         f"src {src} metallicity from intersection w/ pettini 2004 N2 diagnostic line: "
         f"{pp04_N2_metallicity_line(log_NIIalpha)}")
     print(f"log(O3N2): {log_o3n2} +- {log_o3n2_err}")
-    print(
-        f"src {src} metallicity from intersection w/ pettini 2004 O3N2: "
-        f"{pettini_metallicity(log_o3n2)}")
+    print(f"src {src} metallicity from intersection w/ pettini 2004 O3N2: "
+          f"{pettini_metallicity(log_o3n2)}")
     print(f"log(R23_{src}): {logR23} +- {logR23_err}")
     print(f"KK04 log(R23_{src}): {logkR23} +- {logkR23_err}")
-    print(f"log([OIII]/Hbeta) for source {src}: {log_OIIIbeta} +- {log_OIIIbeta_err}")
+    print(
+        f"log([OIII]/Hbeta) for source {src}: {log_OIIIbeta} +- {log_OIIIbeta_err}"
+    )
     print(f"E(B-V) for source {src}: {E_BV} +- {E_BV_err}")
 
 ratios_A = ratios_out['A']
@@ -219,7 +237,10 @@ fig, ax = plt.subplots(figsize=(16, 9))
 ax.plot(logN2s, pettini_N2_metals, color='black', ls='--', lw=0.8)
 ax.plot(logN2s, pettini_N2_metals_s, color='red', ls='-', lw=0.5)
 ax.axvline(logs['A']['log_NIIalpha'], label='Source A', ls='--', color='pink')
-ax.axvline(logs['B']['log_NIIalpha'], label='Source B', ls='--', color='purple')
+ax.axvline(logs['B']['log_NIIalpha'],
+           label='Source B',
+           ls='--',
+           color='purple')
 ax.axhline(8.66, label="solar", ls='--', color='black', lw=0.5)
 ax.legend()
 ax.set_xlabel("Log([NII]/Halpha)")

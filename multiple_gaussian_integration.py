@@ -23,7 +23,8 @@ LINES = {
         'save': './output/improved_gaussians/Halpha/Halpha_fluxes.pkl',
     },
     'Hbeta': {
-        'pkl': './output/improved_gaussians/Hbeta/6_gaussian_constrained_halpha.pkl',
+        'pkl':
+        './output/improved_gaussians/Hbeta/6_gaussian_constrained_halpha.pkl',
         'A_indices': [0, 1, 2],
         'B_indices': [3, 4, 5],
         'save': './output/improved_gaussians/Hbeta/Hbeta_fluxes.pkl',
@@ -34,7 +35,8 @@ LINES = {
         # uncertainty back in via a finite-difference Jacobian.
         'tie': {
             'indices': [3, 4, 5],
-            'ref_pkl': './output/improved_gaussians/Halpha/5_gaussian_constrained.pkl',
+            'ref_pkl':
+            './output/improved_gaussians/Halpha/5_gaussian_constrained.pkl',
             'ref_indices': [2, 3, 4],
             'ref_rest_wavelength': 6562.819,
             'rest_wavelength': 4861.333,
@@ -43,12 +45,13 @@ LINES = {
         },
     },
     'Hgamma': {
-        'pkl': './output/improved_gaussians/Hgamma/6_gaussian_masked_constrained.pkl',
+        'pkl':
+        './output/improved_gaussians/Hgamma/6_gaussian_masked_constrained.pkl',
         'A_indices': [0, 1, 2],
         'B_indices': [3, 4, 5],
         'save': './output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl',
     },
-    'Hdelta':{
+    'Hdelta': {
         'pkl': './output/improved_gaussians/Hdelta/2_gaussian.pkl',
         'A_indices': [0],
         'B_indices': [1],
@@ -67,7 +70,8 @@ LINES = {
         'save': './output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl',
     },
     'OIII4959': {
-        'pkl': './output/improved_gaussians/OIII4959/6_gaussian_constrained_5007_scaled.pkl',
+        'pkl':
+        './output/improved_gaussians/OIII4959/6_gaussian_constrained_5007_scaled.pkl',
         'A_indices': [0, 1, 2],
         'B_indices': [3, 4, 5],
         'save': './output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl',
@@ -147,7 +151,8 @@ def flux_and_uncert(bestfit_model, indices):
         total += amp * std * SQRT2PI
 
         if amp_param.tied:
-            grad += std * SQRT2PI * _tied_param_grad(bestfit_model, amp_param, idx)
+            grad += std * SQRT2PI * _tied_param_grad(bestfit_model, amp_param,
+                                                     idx)
         elif f'amplitude_{i}' in idx:
             grad[idx[f'amplitude_{i}']] += std * SQRT2PI
 
@@ -155,7 +160,8 @@ def flux_and_uncert(bestfit_model, indices):
         # has no variance and isn't in the covariance matrix at all -- it
         # contributes zero to the propagated uncertainty, so just skip it.
         if std_param.tied:
-            grad += amp * SQRT2PI * _tied_param_grad(bestfit_model, std_param, idx)
+            grad += amp * SQRT2PI * _tied_param_grad(bestfit_model, std_param,
+                                                     idx)
         elif f'stddev_{i}' in idx:
             grad[idx[f'stddev_{i}']] += amp * SQRT2PI
 
@@ -188,9 +194,12 @@ def flux_and_uncert_diagonal(bestfit_model, indices):
         area = amp * std * SQRT2PI
         total += area
 
-        amp_uncert = np.sqrt(diag[idx[f'amplitude_{i}']]) if f'amplitude_{i}' in idx else 0.0
-        std_uncert = np.sqrt(diag[idx[f'stddev_{i}']]) if f'stddev_{i}' in idx else 0.0
-        area_uncert = np.sqrt((amp_uncert / amp)**2 + (std_uncert / std)**2) * area
+        amp_uncert = np.sqrt(
+            diag[idx[f'amplitude_{i}']]) if f'amplitude_{i}' in idx else 0.0
+        std_uncert = np.sqrt(
+            diag[idx[f'stddev_{i}']]) if f'stddev_{i}' in idx else 0.0
+        area_uncert = np.sqrt((amp_uncert / amp)**2 +
+                              (std_uncert / std)**2) * area
         var_total += area_uncert**2
 
     uncert = np.sqrt(var_total)
@@ -205,14 +214,17 @@ def load_window(rest_wavelength, z_center, halfwidth):
         h = hdu[1].header
         flux_data = hdu[1].data
         noise_data = hdu[4].data
-    lam = ((h["CRVAL1"] + (np.arange(h["NAXIS1"]) + 1.0 - h["CRPIX1"]) *
-            h["CDELT1"]) * u.Unit(h["CUNIT1"])).to("AA").value
+    lam = ((h["CRVAL1"] +
+            (np.arange(h["NAXIS1"]) + 1.0 - h["CRPIX1"]) * h["CDELT1"]) *
+           u.Unit(h["CUNIT1"])).to("AA").value
     flux_norm = flux_data / np.nanmedian(flux_data)
     noise_norm = noise_data / np.nanmedian(flux_data)
     zoom = np.where((lam <= rest_wavelength * (1 + z_center) + halfwidth)
                     & (lam >= rest_wavelength * (1 + z_center) - halfwidth))[0]
-    lam_trim, flux_trim, noise_trim = lam[zoom], flux_norm[zoom], noise_norm[zoom]
-    bad = (~np.isfinite(flux_trim) | ~np.isfinite(noise_trim) | (noise_trim < 0))
+    lam_trim, flux_trim, noise_trim = lam[zoom], flux_norm[zoom], noise_norm[
+        zoom]
+    bad = (~np.isfinite(flux_trim) | ~np.isfinite(noise_trim) |
+           (noise_trim < 0))
     return lam_trim[~bad], flux_trim[~bad], noise_trim[~bad]
 
 
@@ -235,21 +247,23 @@ def tie_uncertainty(bestfit_model, tie_cfg, indices, n_samples=4000, seed=42):
     rest_ref = tie_cfg['ref_rest_wavelength']
     line_new = tie_cfg['rest_wavelength']
 
-    lam_fit, flux_fit, noise_fit = load_window(
-        tie_cfg['rest_wavelength'], tie_cfg['window_z_center'],
-        tie_cfg['window_halfwidth'])
+    lam_fit, flux_fit, noise_fit = load_window(tie_cfg['rest_wavelength'],
+                                               tie_cfg['window_z_center'],
+                                               tie_cfg['window_halfwidth'])
     weights = 1.0 / noise_fit
 
-    other_indices = [i for i in range(bestfit_model.n_submodels - 1)
-                     if i not in indices]
+    other_indices = [
+        i for i in range(bestfit_model.n_submodels - 1) if i not in indices
+    ]
     other_model = reduce(operator.add,
                          [bestfit_model[i] for i in other_indices])
     continuum = bestfit_model[bestfit_model.n_submodels - 1]
     residual = flux_fit - other_model(lam_fit) - continuum(lam_fit)
 
     def linear_amplitudes(means, stds):
-        X = np.column_stack(
-            [np.exp(-0.5 * ((lam_fit - m) / s)**2) for m, s in zip(means, stds)])
+        X = np.column_stack([
+            np.exp(-0.5 * ((lam_fit - m) / s)**2) for m, s in zip(means, stds)
+        ])
         XtWX = X.T @ (X * (weights**2)[:, None])
         XtWy = X.T @ (residual * weights**2)
         return np.linalg.solve(XtWX, XtWy)
@@ -298,8 +312,10 @@ for line_name, cfg in LINES.items():
 
     flux_A, uncert_A = flux_and_uncert(bestfit_model, cfg['A_indices'])
     flux_B, uncert_B = flux_and_uncert(bestfit_model, cfg['B_indices'])
-    _, uncert_A_diag = flux_and_uncert_diagonal(bestfit_model, cfg['A_indices'])
-    _, uncert_B_diag = flux_and_uncert_diagonal(bestfit_model, cfg['B_indices'])
+    _, uncert_A_diag = flux_and_uncert_diagonal(bestfit_model,
+                                                cfg['A_indices'])
+    _, uncert_B_diag = flux_and_uncert_diagonal(bestfit_model,
+                                                cfg['B_indices'])
 
     component_fluxes = {'A': [], 'B': []}
     component_flux_uncerts = {'A': [], 'B': []}
@@ -323,9 +339,11 @@ for line_name, cfg in LINES.items():
 
     tie_cfg = cfg.get('tie')
     if tie_cfg is not None:
-        for source, indices in [('A', cfg['A_indices']), ('B', cfg['B_indices'])]:
+        for source, indices in [('A', cfg['A_indices']),
+                                ('B', cfg['B_indices'])]:
             if set(tie_cfg['indices']) == set(indices):
-                total_tie, comp_tie = tie_uncertainty(bestfit_model, tie_cfg, indices)
+                total_tie, comp_tie = tie_uncertainty(bestfit_model, tie_cfg,
+                                                      indices)
                 if source == 'A':
                     uncert_A = np.sqrt(uncert_A**2 + total_tie**2)
                     uncert_A_diag = np.sqrt(uncert_A_diag**2 + total_tie**2)
