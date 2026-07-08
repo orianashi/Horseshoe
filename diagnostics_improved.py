@@ -92,10 +92,17 @@ def bpt_line(log_NIIalpha, z):
     return 0.61 / denom + 1.2 + 0.03 * z
 
 # ====================================
+# per-line balmer decrement
+
+print(Halpha_new['fluxes']['A'])
+
+
+# ====================================
 # recompute ratios per source, swapping in improved fluxes where available
 # ====================================
 ratios_out = {}
 logs = {}
+
 for src in ('A', 'B'):
     NIIalpha, NIIalpha_err = ratios(NII6583['flux'][src],
                                      Halpha_new['fluxes'][src],

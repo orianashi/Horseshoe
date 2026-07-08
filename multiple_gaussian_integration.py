@@ -48,6 +48,12 @@ LINES = {
         'B_indices': [3, 4, 5],
         'save': './output/improved_gaussians/Hgamma/Hgamma_fluxes.pkl',
     },
+    'Hdelta':{
+        'pkl': './output/improved_gaussians/Hdelta/2_gaussian.pkl',
+        'A_indices': [0],
+        'B_indices': [1],
+        'save': './output/improved_gaussians/Hdelta/Hdelta_fluxes.pkl',
+    },
     'CIII': {
         'pkl': './output/improved_gaussians/CIII/CIII_bestfit_gaussians_1.pkl',
         'A_indices': [0, 1],
@@ -157,6 +163,40 @@ def flux_and_uncert(bestfit_model, indices):
     return total, uncert
 
 
+def flux_and_uncert_diagonal(bestfit_model, indices):
+    """Alternate, simplistic version of flux_and_uncert(): same total flux,
+    but uncertainty from only the diagonal of the covariance matrix (each
+    parameter's own variance), combined in quadrature -- the same recipe as
+    legacy gauss_integration.py's integrate(), rather than propagating
+    through the full covariance matrix. This ignores both the amp/stddev
+    correlation within a component and the correlation between components,
+    so for overlapping multi-gaussian components (see flux_and_uncert's
+    docstring) it will generally over- or under-estimate the true
+    uncertainty. Kept alongside flux_and_uncert() for comparison; a fixed or
+    tied parameter has no diagonal entry and so contributes zero, same as in
+    flux_and_uncert().
+    """
+    names = bestfit_model.cov_matrix.param_names
+    diag = np.diag(bestfit_model.cov_matrix.cov_matrix)
+    idx = {n: k for k, n in enumerate(names)}
+
+    total = 0.0
+    var_total = 0.0
+    for i in indices:
+        amp = getattr(bestfit_model, f'amplitude_{i}').value
+        std = getattr(bestfit_model, f'stddev_{i}').value
+        area = amp * std * SQRT2PI
+        total += area
+
+        amp_uncert = np.sqrt(diag[idx[f'amplitude_{i}']]) if f'amplitude_{i}' in idx else 0.0
+        std_uncert = np.sqrt(diag[idx[f'stddev_{i}']]) if f'stddev_{i}' in idx else 0.0
+        area_uncert = np.sqrt((amp_uncert / amp)**2 + (std_uncert / std)**2) * area
+        var_total += area_uncert**2
+
+    uncert = np.sqrt(var_total)
+    return total, uncert
+
+
 def load_window(rest_wavelength, z_center, halfwidth):
     """Reproduce infinite_gaussians.py's load/trim/clean of the NIR spectrum
     around one emission line, needed to redo the linear amplitude solve for
@@ -258,18 +298,27 @@ for line_name, cfg in LINES.items():
 
     flux_A, uncert_A = flux_and_uncert(bestfit_model, cfg['A_indices'])
     flux_B, uncert_B = flux_and_uncert(bestfit_model, cfg['B_indices'])
+    _, uncert_A_diag = flux_and_uncert_diagonal(bestfit_model, cfg['A_indices'])
+    _, uncert_B_diag = flux_and_uncert_diagonal(bestfit_model, cfg['B_indices'])
 
     component_fluxes = {'A': [], 'B': []}
     component_flux_uncerts = {'A': [], 'B': []}
+    component_flux_uncerts_diagonal = {'A': [], 'B': []}
     for source, indices in [('A', cfg['A_indices']), ('B', cfg['B_indices'])]:
         for i in indices:
             f_i, u_i = flux_and_uncert(bestfit_model, [i])
+            _, u_i_diag = flux_and_uncert_diagonal(bestfit_model, [i])
             component_fluxes[source].append(f_i)
             component_flux_uncerts[source].append(u_i)
+            component_flux_uncerts_diagonal[source].append(u_i_diag)
     component_fluxes = {k: np.array(v) for k, v in component_fluxes.items()}
     component_flux_uncerts = {
         k: np.array(v)
         for k, v in component_flux_uncerts.items()
+    }
+    component_flux_uncerts_diagonal = {
+        k: np.array(v)
+        for k, v in component_flux_uncerts_diagonal.items()
     }
 
     tie_cfg = cfg.get('tie')
@@ -279,16 +328,26 @@ for line_name, cfg in LINES.items():
                 total_tie, comp_tie = tie_uncertainty(bestfit_model, tie_cfg, indices)
                 if source == 'A':
                     uncert_A = np.sqrt(uncert_A**2 + total_tie**2)
+                    uncert_A_diag = np.sqrt(uncert_A_diag**2 + total_tie**2)
                 else:
                     uncert_B = np.sqrt(uncert_B**2 + total_tie**2)
+                    uncert_B_diag = np.sqrt(uncert_B_diag**2 + total_tie**2)
                 component_flux_uncerts[source] = np.sqrt(
                     component_flux_uncerts[source]**2 + comp_tie**2)
+                component_flux_uncerts_diagonal[source] = np.sqrt(
+                    component_flux_uncerts_diagonal[source]**2 + comp_tie**2)
 
     print(
         f"Flux for {line_name} source A: {flux_A:.3f} +/- {uncert_A:.3f} ergs/s/cm2"
     )
     print(
         f"Flux for {line_name} source B: {flux_B:.3f} +/- {uncert_B:.3f} ergs/s/cm2"
+    )
+    print(
+        f"  [diagonal-only] source A: {flux_A:.3f} +/- {uncert_A_diag:.3f} ergs/s/cm2"
+    )
+    print(
+        f"  [diagonal-only] source B: {flux_B:.3f} +/- {uncert_B_diag:.3f} ergs/s/cm2"
     )
 
     result = {
@@ -300,8 +359,13 @@ for line_name, cfg in LINES.items():
             'A': uncert_A,
             'B': uncert_B
         },
+        'flux_uncerts_diagonal': {
+            'A': uncert_A_diag,
+            'B': uncert_B_diag
+        },
         'component_fluxes': component_fluxes,
         'component_flux_uncerts': component_flux_uncerts,
+        'component_flux_uncerts_diagonal': component_flux_uncerts_diagonal,
         'units': 'ergs / s / cm2',
     }
     with open(cfg['save'], 'wb') as f:
