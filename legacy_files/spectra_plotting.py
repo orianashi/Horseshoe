@@ -6,9 +6,9 @@ from matplotlib.ticker import MultipleLocator
 
 plt.ion()
 
-NIR_file = './Data/X-Shooter/1D/stacked_NIR.fits'
-UVB_file = './Data/X-Shooter/1D/stacked_UVB.fits'
-VIS_file = './Data/X-Shooter/1D/stacked_VIS.fits'
+NIR_file = '../Data/X-Shooter/1D/stacked_NIR.fits'
+UVB_file = '../Data/X-Shooter/1D/stacked_UVB.fits'
+VIS_file = '../Data/X-Shooter/1D/stacked_VIS.fits'
 
 ###import data
 
@@ -142,13 +142,13 @@ lam_vis_rest = lam_vis_trim / (1 + z_A)
 lam_nir_rest = lam_nir_trim / (1 + z_A)
 
 #load in reference
-horseshoe_ref = np.genfromtxt('./absorption_wls/horseshoe_atoms.dat',
+horseshoe_ref = np.genfromtxt('../absorption_wls/horseshoe_atoms.dat',
                               dtype=str)
 horseshoe_spec = horseshoe_ref[:, 0]
 horseshoe_wl = horseshoe_ref[:, 1].astype(float)
 
 #load in ism absorption lines
-ism_ref = np.genfromtxt('./absorption_wls/ism_atoms.dat', dtype=str)
+ism_ref = np.genfromtxt('../absorption_wls/ism_atoms.dat', dtype=str)
 ism_spec = ism_ref[:, 0]
 ism_wl = ism_ref[:, 1].astype(float)
 

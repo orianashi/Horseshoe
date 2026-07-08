@@ -19,8 +19,8 @@ z_B = 1.677
 z_A = 1.679
 
 # emission lines - for the sake of fitting (since I don't know which is the actual galaxy vs outflow, should i not tie?)
-line = 4861.333
-line_name = 'Hbeta'
+line = 4101.742
+line_name = 'H_delta'
 
 #spectrum
 spec_lib = "./Data/X-Shooter/1D/stacked_NIR.fits"
@@ -62,6 +62,7 @@ lam_fit = lam_clean
 flux_fit = flux_clean
 noise_fit = noise_clean
 
+"""
 # =================
 # tie source B's 3 velocity components to source B's Halpha decomposition
 # =================
@@ -94,29 +95,31 @@ for i in (2, 3, 4):  # Halpha's 3 source-B components
 # X-Shooter NIR resolution at ~17569 AA: R~5600 -> sigma_instr = lam/(R*2.355) ~1.33 AA
 sigma_instr = 17569 / (5600 * 2.355)
 
+"""
 gauss_guesses = {
-    '1': {
-        'z_guess' : z_A + 0.0007,
-        'amplitude': 5,
-        'stddev': 2,
-        'stddev_bounds': (0, 5),
-        'amplitude_bound': (1, 15),
-        'mean_range': 3  },
-     '2': {
+     '1': {
         # main core of source A
         'z_guess': z_A + 0.0001,
         'amplitude': 12,
         'stddev': 1.5,
         'stddev_bounds': (0,3 ),
-        'amplitude_bound': (2, None),
+        'amplitude_bound': (0, None),
         'mean_range': 3,
     },
+     '2': {
+        'z_guess': z_A - 0.0002,
+        'amplitude': 2,
+        'stddev': 1.5,
+        'stddev_bounds': (0,3 ),
+        'amplitude_bound': (0, 6),
+        'mean_range': 3,
+    },    
     '3': {
-        'z_guess' : z_A - 0.0005,
+        'z_guess' : z_B,
         'amplitude': 5,
         'stddev': 1.5,
-        'stddev_bounds': (0.75, 5),
-        'amplitude_bound': (1, 15),
+        'stddev_bounds': (0, 5),
+        'amplitude_bound': (1, None),
         'mean_range': 3  },
 }
 
@@ -142,16 +145,14 @@ ax.axvline(line * (1 + gauss_guesses['2']['z_guess']),
            alpha=0.5,
            lw=0.8)
 
-ax.axvline(line * (1 + gauss_guesses['3']['z_guess']),
-           color='red',
-           ls='--',
-           alpha=0.5,
-           lw=0.8)
 
+
+"""
 for tied in B_tied:
     ax.axvline(tied['mean'], color='teal', ls='--', alpha=0.5, lw=0.8)
-
+    
 ax.axvspan(13015.8, 13020.6, color='pink', alpha=0.2, label='missing data (NaN gap)')
+"""
 
 ax.legend()
 plt.show()
@@ -204,16 +205,18 @@ def create_tied_gaussian(source_label, mean_tied, stddev_tied, amplitude_guess,
 gs_1 = create_gaussians('1')
 gs_2 = create_gaussians("2")
 gs_3 = create_gaussians("3")
+"""
 gs_4 = create_tied_gaussian('4', B_tied[0]['mean'], B_tied[0]['stddev'], 2.6, (0, 15))
 gs_5 = create_tied_gaussian('5', B_tied[1]['mean'], B_tied[1]['stddev'], 2.9, (0, 15))
 gs_6 = create_tied_gaussian('6', B_tied[2]['mean'], B_tied[2]['stddev'], 2.1, (0, 15))
+"""
 
 # also make a continuum
 continuum = models.Const1D(amplitude=np.nanmedian(flux_fit),
                            name="continuum")  #makes a flat baseline
 
 # combine into a compound model
-concat_gaussians = gs_1 + gs_2 + gs_3 + gs_4 + gs_5 + gs_6 + [
+concat_gaussians = gs_1 + gs_2 + gs_3 + [
     continuum
 ]
 compound_model = reduce(operator.add, concat_gaussians)
@@ -247,7 +250,8 @@ ax[0].fill_between(lam_clean,
                    color="dimgray",
                    alpha=0.8,
                    label="noise")
-ax[0].axvspan(13015.8, 13020.6, color='pink', alpha=0.2, label='missing data (NaN gap)')
+
+#ax[0].axvspan(13015.8, 13020.6, color='pink', alpha=0.2, label='missing data (NaN gap)')
 
 # plot the bestfit model
 ax[0].plot(lam_model,
@@ -257,7 +261,7 @@ ax[0].plot(lam_model,
            lw=2)
 
 # individual components
-cont_m = bestfit_model[6]
+cont_m = bestfit_model[3]
 colors = {
     "1": "purple",
     "2": "royalblue",
@@ -266,7 +270,7 @@ colors = {
     "5": 'orange',
     "6": 'green',
 }
-for i, label in enumerate(["1", "2", "3", '4', '5', '6']):
+for i, label in enumerate(["1", "2", '3']):
     comp = bestfit_model[i]
     ax[0].plot(lam_model,
                comp(lam_model) + cont_m(lam_model),
@@ -304,7 +308,7 @@ ax[1].scatter(
 )
 ax[1].axhline(0, ls='--', alpha=0.4)
 # +-1/2/3 sigma reference lines to eyeball how significant the residuals are
-for level, style in [(1, ':'), (2, '--'), (3, '-'), (4, '-'), (5, '-'), (6, '-')]:
+for level, style in [(1, ':'), (2, '--')]:
     ax[1].axhline(level, ls=style, color='red', alpha=0.3, lw=0.8)
     ax[1].axhline(-level, ls=style, color='red', alpha=0.3, lw=0.8)
 ax[1].legend(frameon=True)
@@ -327,7 +331,7 @@ n_sigma_window = 3.5
 near_line_mask = reduce(
     operator.or_,
     [np.abs(lam_clean - bestfit_model[i].mean.value) <=
-     n_sigma_window * bestfit_model[i].stddev.value for i in range(6)])
+     n_sigma_window * bestfit_model[i].stddev.value for i in range(3)])
 residual_sigma_near = residual_sigma[near_line_mask]
 
 print(f"Points near emission lines (within {n_sigma_window}sigma of a line center): "
@@ -339,7 +343,7 @@ print(
 
 
 # save
-fig.savefig('./output/improved_gaussians/Hbeta/6_gaussian_constrained_halpha.png')
-with open('./output/improved_gaussians/Hbeta/6_gaussian_constrained_halpha.pkl',
+fig.savefig('./output/improved_gaussians/Hdelta/3_gaussian_constrained.png')
+with open('./output/improved_gaussians/Hdelta/3_gaussian_constrained.pkl',
           'wb') as f:
     dill.dump(bestfit_model, f)

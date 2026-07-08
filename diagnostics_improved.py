@@ -91,7 +91,6 @@ def bpt_line(log_NIIalpha, z):
     denom = (log_NIIalpha - 0.02 - 0.1833 * z)
     return 0.61 / denom + 1.2 + 0.03 * z
 
-
 # ====================================
 # recompute ratios per source, swapping in improved fluxes where available
 # ====================================
