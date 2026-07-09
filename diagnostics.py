@@ -157,12 +157,6 @@ for src in ('A', 'B'):
         OII3726['uncert'][src], OIII4959_new['flux_uncerts'][src],
         OIII5007_new['flux_uncerts'][src], Hbeta_new['flux_uncerts'][src])
 
-    log_arg = Halpha_Hbeta / 2.86
-    log_arg_err = Halpha_Hbeta_err / 2.86
-    log10E, log10E_err = log_uncert(log_arg, log_arg_err)
-    E_BV = 1.97 * log10E
-    E_BV_err = 1.97 * log10E_err
-
     log_NIIalpha, log_NIIalpha_err = log_uncert(NIIalpha, NIIalpha_err)
     log_OIIIbeta, log_OIIIbeta_err = log_uncert(OIIIbeta, OIIIbeta_err)
     log_o3n2, log_o3n2_err = log_uncert(o3n2, o3n2_err)
@@ -195,8 +189,6 @@ for src in ('A', 'B'):
         'Halpha/Hbeta_err': Halpha_Hbeta_err,
         'Hgamma/Hbeta': Hgamma_Hbeta,
         'Hgamma/Hbeta_err': Hgamma_Hbeta_err,
-        'E(B-V)': E_BV,
-        'E(B-V)_err': E_BV_err,
         'R23': R23_val,
         'R23_err': R23_err,
         'log(R23)': logR23,
@@ -222,7 +214,6 @@ for src in ('A', 'B'):
     print(
         f"log([OIII]/Hbeta) for source {src}: {log_OIIIbeta} +- {log_OIIIbeta_err}"
     )
-    print(f"E(B-V) for source {src}: {E_BV} +- {E_BV_err}")
 """
 ratios_A = ratios_out['A']
 ratios_B = ratios_out['B']

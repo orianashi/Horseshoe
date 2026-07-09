@@ -66,14 +66,11 @@ def build_flux_table(source):
 
 
 # the dimensionless flux ratios currently in the csv (each gets a log10
-# column); E(B-V) is a derived quantity (already itself proportional to a
-# log, and can be negative), not a ratio, so it's listed separately with no
-# log column.
+# column). E(B-V) is computed solely in dust_extinction.py, not here.
 RATIO_KEYS = [
     'N2', 'O3N2', 'Halpha/Hbeta', 'Hgamma/Hbeta', 'R23', 'kk04_R23',
     '[OIII]/Hbeta'
 ]
-DERIVED_KEYS = ['E(B-V)']
 
 
 def log_uncert(ratio, uncert):
@@ -94,13 +91,6 @@ def build_ratio_table(ratios_dict):
                  uncert=unc,
                  log10_value=log_val,
                  log10_uncert=log_unc))
-    for key in DERIVED_KEYS:
-        rows.append(
-            dict(ratio=key,
-                 value=ratios_dict[key],
-                 uncert=ratios_dict[f'{key}_err'],
-                 log10_value=np.nan,
-                 log10_uncert=np.nan))
     return pd.DataFrame(rows).round(3)
 
 

@@ -1,0 +1,8 @@
+ratio       , value, uncert, notes
+N2          , 0.009,  0.007, 
+[OIII]/Hbeta, 4.758,  2.453, 
+R23         , 7.697,  3.502, 
+kk04_R23    , 6.87 ,  3.141, 
+Halpha/Hbeta, 3.208,  0.347, "from observed, pre-dust-correction fluxes"
+Hgamma/Hbeta, 0.56 ,  0.096, "from observed, pre-dust-correction fluxes"
+E(B-V)      , 0.116,  0.109, derived from observed Halpha/Hbeta decrement
