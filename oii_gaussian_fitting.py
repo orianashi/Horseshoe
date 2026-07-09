@@ -230,7 +230,7 @@ g_3729B.mean.tied = create_mean_tie(2, lineratio_B)
 g_3729B.stddev.tied = create_std_tie(2)
 g_3729B.amplitude.bounds = (wing_bestfit.amplitude_0 * 0.35,
                             wing_bestfit.amplitude_1 * 1.5
-                            )  # removed lower bound on amplitude, so now R < 1.5 
+                            ) 
 
 # make the compound model
 compound_model = g_3726A + g_3729A + g_3726B + g_3729B + continuum
