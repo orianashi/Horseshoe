@@ -157,7 +157,7 @@ A_INDICES = {
     '[OIII]4959': [10, 11],
     'Hbeta': [15, 16],
     'Hgamma': [20, 21],
-    '[OII]': [25, 26, 30, 31],
+    '[OII]': [25, 28],
 }
 B_INDICES = {
     'Halpha': [2, 3, 4],
@@ -165,20 +165,26 @@ B_INDICES = {
     '[OIII]4959': [12, 13, 14],
     'Hbeta': [17, 18, 19],
     'Hgamma': [22, 23, 24],
-    '[OII]': [27, 28, 29, 32, 33, 34],
+    '[OII]': [26, 27, 29, 30],
 }
 
 colors = {
-    ('A', 'central'): 'purple',
-    ('A', 'red'): 'orangered',
-    ('B', 'central'): 'darkorange',
-    ('B', 'red'): 'crimson',
-    ('B', 'blue'): 'royalblue',
+    ('A', 'central'): 'yellow',
+    ('B', 'central'): 'orange',
+    ('A', 'red'): 'red',
+    ('B', 'red'): 'red',
+    ('B', 'blue'): 'blue',
 }
 
 
 def component_color(label):
-    _, source, role = label.split('_')
+    # [OII] components are single Gaussians per source (no central/red/blue
+    # role, e.g. "[OII]3726_A"), so they fall back to the "central" color
+    parts = label.split('_')
+    if len(parts) == 2:
+        _, source = parts
+        return colors[(source, 'central')]
+    _, source, role = parts
     return colors[(source, role)]
 
 
@@ -306,12 +312,12 @@ if __name__ == "__main__":
     # 18: Hbeta_B_central (tied 3) 19: Hbeta_B_blue (tied 4)
     # 20: Hgamma_A_central (tied 0)  21: Hgamma_A_red (tied 1) 22: Hgamma_B_red (tied 2)
     # 23: Hgamma_B_central (tied 3) 24: Hgamma_B_blue (tied 4)
-    # 25: [OII]3726_A_central (tied 0, wing amplitude bounds)  26: [OII]3726_A_red (tied 1)
-    # 27: [OII]3726_B_red (tied 2)  28: [OII]3726_B_central (tied 3)  29: [OII]3726_B_blue (tied 4)
-    # 30: [OII]3729_A_central (tied 0)  31: [OII]3729_A_red (tied 1)
-    # 32: [OII]3729_B_red (tied 2)  33: [OII]3729_B_central (tied 3, wing amplitude bounds)  34: [OII]3729_B_blue (tied 4)
-    # 35: continuum_Halpha  36: continuum_[OIII]5007  37: continuum_[OIII]4959
-    # 38: continuum_Hbeta  39: continuum_Hgamma  40: continuum_[OII]
+    # 25: [OII]3726_A (tied 0, wing amplitude bounds)
+    # 26: [OII]3726_B_red (tied 2)  27: [OII]3726_B_central (tied 3)
+    # 28: [OII]3729_A (tied 0)
+    # 29: [OII]3729_B_red (tied 2)  30: [OII]3729_B_central (tied 3, wing amplitude bounds)
+    # 31: continuum_Halpha  32: continuum_[OIII]5007  33: continuum_[OIII]4959
+    # 34: continuum_Hbeta  35: continuum_Hgamma  36: continuum_[OII]
     # ==================
     gaussians = []
 
@@ -357,30 +363,28 @@ if __name__ == "__main__":
         build_tied('Hgamma_B_central', 3, r_hg_ha, 2.5, (0, None)))  # 23
     gaussians.append(build_tied('Hgamma_B_blue', 4, r_hg_ha, 1, (0, None)))  # 24
 
-    # [OII]3726: blended (with 3729B) on source A's central component --
-    # amplitude bounds replicate oii_gaussian_fitting.py lines 220-233,
-    # derived from the unblended wing fit's amplitudes.
+    # [OII]: source A stays a single Gaussian per line (no central/red/blue
+    # decomposition), tied to Halpha's *_central component (ref_idx 0).
+    # Source B now also gets a red-wing component (ref_idx 2), same as every
+    # other line's B_red. [OII]3726_A and [OII]3729_B_central are blended
+    # with each other, so their amplitude bounds replicate
+    # oii_gaussian_fitting.py lines 220-233, derived from the unblended wing
+    # fit's amplitudes.
     r_oii3726_ha = rest['[OII]3726'] / rest['Halpha']
     gaussians.append(
-        build_tied('[OII]3726_A_central', 0, r_oii3726_ha, amp0_wing / 1.4,
+        build_tied('[OII]3726_A', 0, r_oii3726_ha, amp0_wing / 1.4,
                    (amp0_wing / 1.5, amp0_wing / 0.35)))  # 25
-    gaussians.append(build_tied('[OII]3726_A_red', 1, r_oii3726_ha, 1, (0, None)))  # 26
-    gaussians.append(build_tied('[OII]3726_B_red', 2, r_oii3726_ha, 1, (0, None)))  # 27
+    gaussians.append(build_tied('[OII]3726_B_red', 2, r_oii3726_ha, 1, (0, None)))  # 26
     gaussians.append(
-        build_tied('[OII]3726_B_central', 3, r_oii3726_ha, amp1_wing, (0, None)))  # 28
-    gaussians.append(build_tied('[OII]3726_B_blue', 4, r_oii3726_ha, 1, (0, None)))  # 29
+        build_tied('[OII]3726_B_central', 3, r_oii3726_ha, amp1_wing, (0, None)))  # 27
 
-    # [OII]3729: blended (with 3726A) on source B's central component --
-    # amplitude bounds replicate oii_gaussian_fitting.py lines 220-233.
     r_oii3729_ha = rest['[OII]3729'] / rest['Halpha']
     gaussians.append(
-        build_tied('[OII]3729_A_central', 0, r_oii3729_ha, amp0_wing, (0, None)))  # 30
-    gaussians.append(build_tied('[OII]3729_A_red', 1, r_oii3729_ha, 1, (0, None)))  # 31
-    gaussians.append(build_tied('[OII]3729_B_red', 2, r_oii3729_ha, 1, (0, None)))  # 32
+        build_tied('[OII]3729_A', 0, r_oii3729_ha, amp0_wing, (0, None)))  # 28
+    gaussians.append(build_tied('[OII]3729_B_red', 2, r_oii3729_ha, 1, (0, None)))  # 29
     gaussians.append(
         build_tied('[OII]3729_B_central', 3, r_oii3729_ha, amp1_wing * 1.4,
-                   (amp0_wing * 0.35, amp1_wing * 1.5)))  # 33
-    gaussians.append(build_tied('[OII]3729_B_blue', 4, r_oii3729_ha, 1, (0, None)))  # 34
+                   (amp0_wing * 0.35, amp1_wing * 1.5)))  # 30
 
     continua = []
     for name in line_order:
@@ -409,6 +413,20 @@ if __name__ == "__main__":
                            flux_all,
                            weights=1.0 / noise_all,
                            maxiter=5000)
+
+    # ==================
+    # flag components whose amplitude collapsed to near-zero -- i.e. the
+    # fitter found the data doesn't support that component (usually a wing)
+    # ==================
+    print("Components with amplitude < 0.5 (collapsed):")
+    collapsed_any = False
+    for i in range(len(gaussians)):
+        amp = getattr(bestfit_model, f'amplitude_{i}').value
+        if amp < 0.5:
+            collapsed_any = True
+            print(f"  {bestfit_model[i].name}: amplitude = {amp:.4f}")
+    if not collapsed_any:
+        print("  none")
 
     # ==================
     # bake tied params to fixed constants before saving, recording the tie

@@ -8,13 +8,18 @@ from multiple_gaussian_integration import LINES, load_model, load_tie_map, flux_
 # ======================================
 # NOTE : flux units are in ergs/s/cm^2 /Angstrom
 
-# Source B's components in each Balmer line's joint-tied-fit model are
-# ordered [red_wing, central, blue_wing] in LINES[line]['B_indices'] (see
-# balmer_joint_gaussian_fitting.py's index layout) -- flux for each wing is
-# computed directly from the joint fit model + tie_map, not from a
+# Each source's components in every Balmer line's joint-tied-fit model (all
+# seven lines tied to Halpha as master, see jointfit_all.py /
+# output/joint_fit/all_detections) are ordered [central, red_wing] in
+# LINES[line]['A_indices'] (source A has no blue wing) and
+# [red_wing, central, blue_wing] in LINES[line]['B_indices'] -- flux for each
+# wing is computed directly from the joint fit model + tie_map, not from a
 # separately-run multiple_gaussian_integration.py output, so this always
 # reflects the current joint-fit model.
-WING_NAMES = ['red_wing', 'central', 'blue_wing']
+WING_NAMES = {
+    'A': ['central', 'red_wing'],
+    'B': ['red_wing', 'central', 'blue_wing'],
+}
 BALMER_LINES = ('Halpha', 'Hbeta', 'Hgamma')
 
 models = {}
@@ -33,42 +38,44 @@ def ratios(num, denom, num_uncert, denom_uncert):
     return ratio, ratio_uncert
 
 
-# run for each wing, for Source B
+# run for each wing, for both sources
 results = {}
-for j, wing in enumerate(WING_NAMES):
-    wing_data = {}
-    for line in BALMER_LINES:
-        idx = LINES[line]['B_indices'][j]
-        flux, uncert = flux_and_uncert(models[line], [idx], tie_maps[line])
-        wing_data[line] = {'flux': flux, 'flux_uncert': uncert}
+for source, wing_names in WING_NAMES.items():
+    results[source] = {}
+    for j, wing in enumerate(wing_names):
+        wing_data = {}
+        for line in BALMER_LINES:
+            idx = LINES[line][f'{source}_indices'][j]
+            flux, uncert = flux_and_uncert(models[line], [idx], tie_maps[line])
+            wing_data[line] = {'flux': flux, 'flux_uncert': uncert}
 
-    ab, ab_uncert = ratios(wing_data['Halpha']['flux'],
-                           wing_data['Hbeta']['flux'],
-                           wing_data['Halpha']['flux_uncert'],
-                           wing_data['Hbeta']['flux_uncert'])
-    gb, gb_uncert = ratios(wing_data['Hgamma']['flux'],
-                           wing_data['Hbeta']['flux'],
-                           wing_data['Hgamma']['flux_uncert'],
-                           wing_data['Hbeta']['flux_uncert'])
-    wing_data['Halpha_Hbeta'] = {'ratio': ab, 'ratio_uncert': ab_uncert}
-    wing_data['Hgamma_Hbeta'] = {'ratio': gb, 'ratio_uncert': gb_uncert}
+        ab, ab_uncert = ratios(wing_data['Halpha']['flux'],
+                               wing_data['Hbeta']['flux'],
+                               wing_data['Halpha']['flux_uncert'],
+                               wing_data['Hbeta']['flux_uncert'])
+        gb, gb_uncert = ratios(wing_data['Hgamma']['flux'],
+                               wing_data['Hbeta']['flux'],
+                               wing_data['Hgamma']['flux_uncert'],
+                               wing_data['Hbeta']['flux_uncert'])
+        wing_data['Halpha_Hbeta'] = {'ratio': ab, 'ratio_uncert': ab_uncert}
+        wing_data['Hgamma_Hbeta'] = {'ratio': gb, 'ratio_uncert': gb_uncert}
 
-    print(f"--- {wing} (Source B) ---")
-    print(
-        f"Halpha: {wing_data['Halpha']['flux']:.3f} +/- {wing_data['Halpha']['flux_uncert']:.3f} ergs/s/cm2"
-    )
-    print(
-        f"Hbeta:  {wing_data['Hbeta']['flux']:.3f} +/- {wing_data['Hbeta']['flux_uncert']:.3f} ergs/s/cm2"
-    )
-    print(
-        f"Hgamma: {wing_data['Hgamma']['flux']:.3f} +/- {wing_data['Hgamma']['flux_uncert']:.3f} ergs/s/cm2"
-    )
-    print(f"Halpha/Hbeta: {ab:.3f} +/- {ab_uncert:.3f}")
-    print(f"Hgamma/Hbeta: {gb:.3f} +/- {gb_uncert:.3f}")
+        print(f"--- {wing} (Source {source}) ---")
+        print(
+            f"Halpha: {wing_data['Halpha']['flux']:.3f} +/- {wing_data['Halpha']['flux_uncert']:.3f} ergs/s/cm2"
+        )
+        print(
+            f"Hbeta:  {wing_data['Hbeta']['flux']:.3f} +/- {wing_data['Hbeta']['flux_uncert']:.3f} ergs/s/cm2"
+        )
+        print(
+            f"Hgamma: {wing_data['Hgamma']['flux']:.3f} +/- {wing_data['Hgamma']['flux_uncert']:.3f} ergs/s/cm2"
+        )
+        print(f"Halpha/Hbeta: {ab:.3f} +/- {ab_uncert:.3f}")
+        print(f"Hgamma/Hbeta: {gb:.3f} +/- {gb_uncert:.3f}")
 
-    results[wing] = wing_data
+        results[source][wing] = wing_data
 
 results['units'] = 'ergs / s / cm2'
 
-with open('./output/diagnostics/sourceB_wing_balmer_fluxes.pkl', 'wb') as f:
+with open('./output/diagnostics/wing_balmer_fluxes.pkl', 'wb') as f:
     dill.dump(results, f)

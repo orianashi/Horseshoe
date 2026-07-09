@@ -20,15 +20,15 @@ def load_pkl(path):
         return dill.load(f)
 
 
-def load_balmer(line_name):
-    """Halpha/Hbeta/Hgamma flux + uncertainty computed directly from the
-    joint tied fit (balmer_joint_gaussian_fitting.py), via the same
-    full-covariance flux_and_uncert() used for every other line -- rather
-    than depending on a separately-run multiple_gaussian_integration.py
-    output, so this always reflects the current joint-fit model. tie_map
-    carries the baked tie ratios so tied components' uncertainty still
-    propagates correctly (see load_tie_map). No diagonal-only variant is
-    needed here."""
+def load_joint_line(line_name):
+    """Flux + uncertainty computed directly from jointfit_all.py's joint fit
+    (Halpha/[OIII]5007/[OIII]4959/Hbeta/Hgamma/[OII]3726/[OII]3729, all tied
+    to Halpha as master; output/joint_fit/all_detections), via the same
+    full-covariance flux_and_uncert() used for every line -- rather than
+    depending on a separately-run multiple_gaussian_integration.py output, so
+    this always reflects the current joint-fit model. tie_map carries the
+    baked tie ratios so tied components' uncertainty still propagates
+    correctly (see load_tie_map). No diagonal-only variant is needed here."""
     cfg = LINES[line_name]
     model = load_model(cfg['pkl'])
     tie_map = load_tie_map(cfg['pkl'])
@@ -39,16 +39,15 @@ def load_balmer(line_name):
     return {'fluxes': flux, 'flux_uncerts': uncert}
 
 
-Halpha_new = load_balmer('Halpha')
-Hbeta_new = load_balmer('Hbeta')
-Hgamma_new = load_balmer('Hgamma')
-OIII4959_new = load_pkl(
-    './output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl')
-OIII5007_new = load_pkl(
-    './output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl')
-OII_new = load_pkl('./output/improved_gaussians/OII/OII_fluxes.pkl')
+Halpha_new = load_joint_line('Halpha')
+Hbeta_new = load_joint_line('Hbeta')
+Hgamma_new = load_joint_line('Hgamma')
+OIII4959_new = load_joint_line('OIII4959')
+OIII5007_new = load_joint_line('OIII5007')
+OII3726_new = load_joint_line('OII3726')
+OII3729_new = load_joint_line('OII3729')
 
-# lines with no improved_gaussians refit yet: fall back to legacy single-gaussian fluxes
+# lines with no joint fit yet: fall back to legacy single-gaussian fluxes
 NIIalphas_legacy = load_pkl('./output/NII/NII_Halpha_ratios.pkl')
 
 # NII_Halpha_ratios.pkl['fluxes'][src] = [flux_Halpha, flux_NII6583, flux_NII6548]
@@ -62,28 +61,8 @@ NII6583 = {
         for src in ('A', 'B')
     },
 }
-# OII_fluxes.pkl['component_fluxes'][src] = [flux_3726, flux_3729], both directly
-# fit (and full-covariance propagated) by the improved 4-gaussian OII model.
-OII3726 = {
-    'flux': {
-        src: OII_new['component_fluxes'][src][0]
-        for src in ('A', 'B')
-    },
-    'uncert': {
-        src: OII_new['component_flux_uncerts'][src][0]
-        for src in ('A', 'B')
-    },
-}
-OII3729 = {
-    'flux': {
-        src: OII_new['component_fluxes'][src][1]
-        for src in ('A', 'B')
-    },
-    'uncert': {
-        src: OII_new['component_flux_uncerts'][src][1]
-        for src in ('A', 'B')
-    },
-}
+OII3726 = {'flux': OII3726_new['fluxes'], 'uncert': OII3726_new['flux_uncerts']}
+OII3729 = {'flux': OII3729_new['fluxes'], 'uncert': OII3729_new['flux_uncerts']}
 
 
 # define function to calculate log values and uncertainty
@@ -354,9 +333,9 @@ plt.show()
 # ====================================
 # save all the ratios
 # ====================================
-with open('./output/tabling/A_ratios_improved.pkl', 'wb') as fA:
+with open('./output/diagnostics/A_ratios_improved.pkl', 'wb') as fA:
     dill.dump(ratios_A, fA)
-with open('./output/tabling/B_ratios_improved.pkl', 'wb') as fB:
+with open('./output/diagnostics/B_ratios_improved.pkl', 'wb') as fB:
     dill.dump(ratios_B, fB)
 print("*= 20")
 print(ratios_A)

@@ -12,31 +12,64 @@ import numpy as np
 # in the compound model, i.e. amplitude_<i>/mean_<i>/stddev_<i>) belong to each
 # source for that line's bestfit model.
 LINES = {
+    # Halpha/[OIII]5007/[OIII]4959/Hbeta/Hgamma/[OII]3726/[OII]3729 are all one
+    # joint fit (see jointfit_all.py): every line's mean/stddev is tied to
+    # Halpha as master. Source A has 2 components (central, red wing) for
+    # every line except [OII], which only gets a single (role-less) component
+    # for source A; source B has 3 (red, central, blue wing) for every line
+    # except [OII], which only gets 2 (red, central; no blue wing). All seven
+    # lines' matching components share one compound model and one covariance
+    # matrix via baked ties (see tie_map/load_tie_map), so flux_and_uncert's
+    # tie_map handling already propagates cross-line uncertainty correctly --
+    # no separate `tie` Monte Carlo config needed.
     'Halpha': {
-        # joint fit of Halpha+Hbeta+Hgamma (see balmer_joint_gaussian_fitting.py):
-        # source A has only 2 components (central, red wing) for every line;
-        # source B has 3 (red, central, blue wing). All three lines' matching
-        # components share one compound model and one covariance matrix via
-        # baked ties (see tie_map/load_tie_map), so flux_and_uncert's tie_map
-        # handling already propagates cross-line uncertainty correctly -- no
-        # separate `tie` Monte Carlo config needed.
-        'pkl': './output/joint_fit/Balmer/Halpha_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/all_detections/Halpha_joint_tied_fit.pkl',
         'A_indices': [0, 1],
         'B_indices': [2, 3, 4],
-        'save': './output/joint_fit/Balmer/Halpha_fluxes.pkl',
+        'save': './output/joint_fit/all_detections/fluxes/Halpha_fluxes.pkl',
     },
-    'Hbeta': {
-        'pkl': './output/joint_fit/Balmer/Hbeta_joint_tied_fit.pkl',
+    'OIII5007': {
+        'pkl':
+        './output/joint_fit/all_detections/[OIII]5007_joint_tied_fit.pkl',
         'A_indices': [5, 6],
         'B_indices': [7, 8, 9],
-        'save': './output/joint_fit/Balmer/Hbeta_fluxes.pkl',
+        'save': './output/joint_fit/all_detections/fluxes/OIII5007_fluxes.pkl',
     },
-    'Hgamma': {
-        'pkl': './output/joint_fit/Balmer/Hgamma_joint_tied_fit.pkl',
+    'OIII4959': {
+        'pkl':
+        './output/joint_fit/all_detections/[OIII]4959_joint_tied_fit.pkl',
         'A_indices': [10, 11],
         'B_indices': [12, 13, 14],
-        'save': './output/joint_fit/Balmer/Hgamma_fluxes.pkl',
+        'save': './output/joint_fit/all_detections/fluxes/OIII4959_fluxes.pkl',
     },
+    'Hbeta': {
+        'pkl': './output/joint_fit/all_detections/Hbeta_joint_tied_fit.pkl',
+        'A_indices': [15, 16],
+        'B_indices': [17, 18, 19],
+        'save': './output/joint_fit/all_detections/fluxes/Hbeta_fluxes.pkl',
+    },
+    'Hgamma': {
+        'pkl': './output/joint_fit/all_detections/Hgamma_joint_tied_fit.pkl',
+        'A_indices': [20, 21],
+        'B_indices': [22, 23, 24],
+        'save': './output/joint_fit/all_detections/fluxes/Hgamma_fluxes.pkl',
+    },
+    # [OII]3726 and [OII]3729 share one saved model/window (see
+    # jointfit_all.py's combined '[OII]' window) -- both entries point at the
+    # same pkl, just with each line's own component indices.
+    'OII3726': {
+        'pkl': './output/joint_fit/all_detections/[OII]_joint_tied_fit.pkl',
+        'A_indices': [25],
+        'B_indices': [26, 27],
+        'save': './output/joint_fit/all_detections/fluxes/OII3726_fluxes.pkl',
+    },
+    'OII3729': {
+        'pkl': './output/joint_fit/all_detections/[OII]_joint_tied_fit.pkl',
+        'A_indices': [28],
+        'B_indices': [29, 30],
+        'save': './output/joint_fit/all_detections/fluxes/OII3729_fluxes.pkl',
+    },
+    # Hdelta/CIII have no joint fit yet -- unrelated single-line refits.
     'Hdelta': {
         'pkl': './output/improved_gaussians/Hdelta/2_gaussian.pkl',
         'A_indices': [0],
@@ -49,35 +82,13 @@ LINES = {
         'B_indices': [2, 3],
         'save': './output/improved_gaussians/CIII/CIII_fluxes.pkl',
     },
-    'OIII5007': {
-        'pkl': './output/improved_gaussians/OIII5007/6_gaussians_3.pkl',
-        'A_indices': [0, 1, 2],
-        'B_indices': [3, 4, 5],
-        'save': './output/improved_gaussians/OIII5007/OIII5007_fluxes.pkl',
-    },
-    'OIII4959': {
-        'pkl':
-        './output/improved_gaussians/OIII4959/6_gaussian_constrained_5007_scaled.pkl',
-        'A_indices': [0, 1, 2],
-        'B_indices': [3, 4, 5],
-        'save': './output/improved_gaussians/OIII4959/OIII4959_fluxes.pkl',
-    },
-    'OII': {
-        # components are [3726_A, 3729_A, 3726_B, 3729_B, continuum]; within
-        # each source the two lines' stddevs are tied to each other (forced
-        # to the same width), unlike every other line's model above.
-        'pkl': './output/improved_gaussians/OII/OII_fullfit_gaussians.pkl',
-        'A_indices': [0, 1],
-        'B_indices': [2, 3],
-        'save': './output/improved_gaussians/OII/OII_fluxes.pkl',
-    },
 }
 
 SQRT2PI = np.sqrt(2 * np.pi)
 
 
 def load_model(path):
-    """OII_fullfit_gaussians.pkl and the Balmer joint_fit pkls store
+    """The joint_fit/all_detections pkls (jointfit_all.py) store
     {'model': ..., ...extra metadata...}; every other line's pkl is the bare
     astropy model. Unwrap either into just the model."""
     with open(path, 'rb') as f:
@@ -86,7 +97,7 @@ def load_model(path):
 
 
 def load_tie_map(path):
-    """The Balmer joint_fit pkls (balmer_joint_gaussian_fitting.py) store a
+    """The joint_fit/all_detections pkls (jointfit_all.py) store a
     plain-data 'tie_map' alongside the model: {index: {'stddev_ref': ref_idx,
     'stddev_ratio': ratio, ...}} for every component whose stddev was tied
     to another component during the fit. Those ties are baked to `.fixed`
