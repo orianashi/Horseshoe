@@ -1,0 +1,4 @@
+wing     , Halpha_flux, Halpha_flux_uncert, Hbeta_flux, Hbeta_flux_uncert, Hgamma_flux, Hgamma_flux_uncert, Halpha/Hbeta, Halpha/Hbeta_uncert, Hgamma/Hbeta, Hgamma/Hbeta_uncert
+red_wing ,      40.954,             26.322,     12.093,             8.571,       6.61 ,              5.764,        3.387,               3.24 ,        0.547,               0.614
+central  ,      90.998,             20.13 ,     31.132,             6.273,      16.281,              3.885,        2.923,               0.875,        0.523,               0.163
+blue_wing,      21.511,              3.389,      4.611,             1.7  ,       3.883,              1.529,        4.666,               1.871,        0.842,               0.454

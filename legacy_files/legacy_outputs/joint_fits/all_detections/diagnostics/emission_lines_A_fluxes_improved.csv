@@ -1,0 +1,10 @@
+line,flux_ergs_s_cm2,flux_uncert,notes
+[OII]3726,19.196,31.016,joint fit (joint_fit/all_detections)
+[OII]3729,30.304,2.039,joint fit (joint_fit/all_detections)
+Hgamma,38.347,2.094,joint fit (joint_fit/all_detections)
+Hbeta,82.371,2.515,joint fit (joint_fit/all_detections)
+[OIII]4959,189.018,4.525,joint fit (joint_fit/all_detections)
+[OIII]5007,559.879,12.768,joint fit (joint_fit/all_detections)
+[NII]6548,5.285,3.18,legacy single-gaussian fit (no joint refit)
+Halpha,290.603,7.76,joint fit (joint_fit/all_detections)
+[NII]6583,6.429,1.735,legacy single-gaussian fit (no joint refit)
