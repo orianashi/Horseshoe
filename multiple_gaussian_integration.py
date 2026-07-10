@@ -12,62 +12,73 @@ import numpy as np
 # in the compound model, i.e. amplitude_<i>/mean_<i>/stddev_<i>) belong to each
 # source for that line's bestfit model.
 LINES = {
-    # Halpha/[OIII]5007/[OIII]4959/Hbeta/Hgamma/[OII]3726/[OII]3729 are all one
-    # joint fit (see jointfit_all.py): every line's mean/stddev is tied to
-    # Halpha as master. Source A has 2 components (central, red wing) for
-    # every line except [OII], which only gets a single (role-less) component
-    # for source A; source B has 3 (red, central, blue wing) for every line
-    # except [OII], which only gets 2 (red, central; no blue wing). All seven
-    # lines' matching components share one compound model and one covariance
-    # matrix via baked ties (see tie_map/load_tie_map), so flux_and_uncert's
-    # tie_map handling already propagates cross-line uncertainty correctly --
-    # no separate `tie` Monte Carlo config needed.
+    # Halpha/[OIII]5007/[OIII]4959/Hbeta/Hgamma/[OII]3726/[OII]3729/[NII]6584
+    # are all one joint fit (see jointfit_all.py): every line's mean/stddev is
+    # tied to Halpha as master. Source A has 2 components (central, red wing)
+    # for every line except [OII] (single role-less component for A) and
+    # [NII]6584 (also a single role-less component for A, no wing
+    # decomposition); source B has 3 (red, central, blue wing) for every line
+    # except [OII] (2: red, central; no blue wing) and [NII]6584 (also a
+    # single component for B). All eight lines' matching components share one
+    # compound model and one covariance matrix via baked ties (see
+    # tie_map/load_tie_map), so flux_and_uncert's tie_map handling already
+    # propagates cross-line uncertainty correctly -- no separate `tie` Monte
+    # Carlo config needed.
     'Halpha': {
-        'pkl': './output/joint_fit/all_detections/Halpha_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/jointfit_all/Halpha_joint_tied_fit.pkl',
         'A_indices': [0, 1],
         'B_indices': [2, 3, 4],
-        'save': './output/joint_fit/all_detections/fluxes/Halpha_fluxes.pkl',
+        'save': './output/joint_fit/jointfit_all/fluxes/Halpha_fluxes.pkl',
     },
     'OIII5007': {
         'pkl':
-        './output/joint_fit/all_detections/[OIII]5007_joint_tied_fit.pkl',
+        './output/joint_fit/jointfit_all/[OIII]5007_joint_tied_fit.pkl',
         'A_indices': [5, 6],
         'B_indices': [7, 8, 9],
-        'save': './output/joint_fit/all_detections/fluxes/OIII5007_fluxes.pkl',
+        'save': './output/joint_fit/jointfit_all/fluxes/OIII5007_fluxes.pkl',
     },
     'OIII4959': {
         'pkl':
-        './output/joint_fit/all_detections/[OIII]4959_joint_tied_fit.pkl',
+        './output/joint_fit/jointfit_all/[OIII]4959_joint_tied_fit.pkl',
         'A_indices': [10, 11],
         'B_indices': [12, 13, 14],
-        'save': './output/joint_fit/all_detections/fluxes/OIII4959_fluxes.pkl',
+        'save': './output/joint_fit/jointfit_all/fluxes/OIII4959_fluxes.pkl',
     },
     'Hbeta': {
-        'pkl': './output/joint_fit/all_detections/Hbeta_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/jointfit_all/Hbeta_joint_tied_fit.pkl',
         'A_indices': [15, 16],
         'B_indices': [17, 18, 19],
-        'save': './output/joint_fit/all_detections/fluxes/Hbeta_fluxes.pkl',
+        'save': './output/joint_fit/jointfit_all/fluxes/Hbeta_fluxes.pkl',
     },
     'Hgamma': {
-        'pkl': './output/joint_fit/all_detections/Hgamma_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/jointfit_all/Hgamma_joint_tied_fit.pkl',
         'A_indices': [20, 21],
         'B_indices': [22, 23, 24],
-        'save': './output/joint_fit/all_detections/fluxes/Hgamma_fluxes.pkl',
+        'save': './output/joint_fit/jointfit_all/fluxes/Hgamma_fluxes.pkl',
     },
     # [OII]3726 and [OII]3729 share one saved model/window (see
     # jointfit_all.py's combined '[OII]' window) -- both entries point at the
     # same pkl, just with each line's own component indices.
     'OII3726': {
-        'pkl': './output/joint_fit/all_detections/[OII]_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/jointfit_all/[OII]_joint_tied_fit.pkl',
         'A_indices': [25],
         'B_indices': [26, 27],
-        'save': './output/joint_fit/all_detections/fluxes/OII3726_fluxes.pkl',
+        'save': './output/joint_fit/jointfit_all/fluxes/OII3726_fluxes.pkl',
     },
     'OII3729': {
-        'pkl': './output/joint_fit/all_detections/[OII]_joint_tied_fit.pkl',
+        'pkl': './output/joint_fit/jointfit_all/[OII]_joint_tied_fit.pkl',
         'A_indices': [28],
         'B_indices': [29, 30],
-        'save': './output/joint_fit/all_detections/fluxes/OII3729_fluxes.pkl',
+        'save': './output/joint_fit/jointfit_all/fluxes/OII3729_fluxes.pkl',
+    },
+    # single component per source (no wing decomposition) -- see
+    # jointfit_all.py's [NII]6584_A/[NII]6584_B, tied to Halpha's central
+    # component and fit within Halpha's own (widened) window.
+    'NII6584': {
+        'pkl': './output/joint_fit/jointfit_all/[NII]6584_joint_tied_fit.pkl',
+        'A_indices': [31],
+        'B_indices': [32],
+        'save': './output/joint_fit/jointfit_all/fluxes/NII6584_fluxes.pkl',
     },
     # Hdelta/CIII have no joint fit yet -- unrelated single-line refits.
     'Hdelta': {

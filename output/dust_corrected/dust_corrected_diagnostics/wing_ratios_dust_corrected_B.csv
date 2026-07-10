@@ -1,3 +1,3 @@
-wing    , R23  , R23_err, kk04_R23, kk04_R23_err, Halpha/Hbeta_observed, Halpha/Hbeta_observed_err, Hgamma/Hbeta_observed, Hgamma/Hbeta_observed_err, E(B-V), E(B-V)_err
-red_wing, 8.725,  33.757,    7.474,       29.851,                 3.387,                     3.24 ,                 0.547,                     0.614,  0.171,      0.967
-central , 7.696,   9.524,    6.962,        8.792,                 2.923,                     0.875,                 0.523,                     0.163,  0.022,      0.303
+wing    , R23  , R23_err, kk04_R23, kk04_R23_err, KD02_O32, KD02_O32_err, log_KD02_O32, log_KD02_O32_err, KK04_O32, KK04_O32_err, log_KK04_O32, log_KK04_O32_err, Halpha/Hbeta_observed, Halpha/Hbeta_observed_err, Hgamma/Hbeta_observed, Hgamma/Hbeta_observed_err, E(B-V), E(B-V)_err
+red_wing, 8.725,  33.757,    7.474,       29.851,    2.302,       10.164,        0.362,            1.917,    7.454,       37.003,        0.872,            2.154,                 3.387,                     3.24 ,                 0.547,                     0.614,  0.171,      0.967
+central , 7.696,   9.524,    6.962,        8.792,    4.159,        6.917,        0.619,            0.722,   14.82 ,       23.277,        1.171,            0.682,                 2.923,                     0.875,                 0.523,                     0.163,  0.022,      0.303

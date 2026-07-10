@@ -100,6 +100,18 @@ def kewley_R23(oii3726, oiii4959, oiii5007, hbeta, oii3726unc, oiii4959unc,
     return R23, R23err
 
 
+def KD02_O32(oii3726, oii3729, oiii5007, oii3726unc, oii3729unc, oiii5007unc):
+    denom = oii3726 + oii3729
+    denom_unc = np.sqrt(oii3726unc**2 + oii3729unc**2)
+    return ratios(oiii5007, denom, oiii5007unc, denom_unc)
+
+
+def KK04_O32(oii3726, oiii4959, oiii5007, oii3726unc, oiii4959unc, oiii5007unc):
+    num = oiii4959 + oiii5007
+    num_unc = np.sqrt(oiii4959unc**2 + oiii5007unc**2)
+    return ratios(num, oii3726, num_unc, oii3726unc)
+
+
 def bpt_line(log_NIIalpha, z):
     denom = (log_NIIalpha - 0.02 - 0.1833 * z)
     return 0.61 / denom + 1.2 + 0.03 * z
@@ -125,9 +137,18 @@ for src in ('A', 'B'):
         OII3726['fluxes'][src], OIII4959['fluxes'][src], OIII5007['fluxes'][src],
         Hbeta['fluxes'][src], OII3726['flux_uncerts'][src], OIII4959['flux_uncerts'][src],
         OIII5007['flux_uncerts'][src], Hbeta['flux_uncerts'][src])
+    KD02_O32_val, KD02_O32_err = KD02_O32(
+        OII3726['fluxes'][src], OII3729['fluxes'][src], OIII5007['fluxes'][src],
+        OII3726['flux_uncerts'][src], OII3729['flux_uncerts'][src], OIII5007['flux_uncerts'][src])
+    KK04_O32_val, KK04_O32_err = KK04_O32(
+        OII3726['fluxes'][src], OIII4959['fluxes'][src], OIII5007['fluxes'][src],
+        OII3726['flux_uncerts'][src], OIII4959['flux_uncerts'][src], OIII5007['flux_uncerts'][src])
 
     log_N2, log_N2_err = log_uncert(N2, N2_err)
     log_OIIIbeta, log_OIIIbeta_err = log_uncert(OIIIbeta, OIIIbeta_err)
+    log_kR23, log_kR23_err = log_uncert(kR23_val, kR23_err)
+    log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
+    log_KK04_O32_val, log_KK04_O32_err = log_uncert(KK04_O32_val, KK04_O32_err)
 
     logs[src] = {
         'log_N2': log_N2,
@@ -139,12 +160,24 @@ for src in ('A', 'B'):
     cumulative_out[src] = {
         'N2': N2,
         'N2_err': N2_err,
+        'log_N2': log_N2,
+        'log_N2_err': log_N2_err,
         '[OIII]/Hbeta': OIIIbeta,
         '[OIII]/Hbeta_err': OIIIbeta_err,
         'R23': R23_val,
         'R23_err': R23_err,
         'kk04_R23': kR23_val,
         'kk04_R23_err': kR23_err,
+        'log_kk04_R23': log_kR23,
+        'log_kk04_R23_err': log_kR23_err,
+        'KD02_O32': KD02_O32_val,
+        'KD02_O32_err': KD02_O32_err,
+        'log_KD02_O32': log_KD02_O32_val,
+        'log_KD02_O32_err': log_KD02_O32_err,
+        'KK04_O32': KK04_O32_val,
+        'KK04_O32_err': KK04_O32_err,
+        'log_KK04_O32': log_KK04_O32_val,
+        'log_KK04_O32_err': log_KK04_O32_err,
         'Halpha/Hbeta': balmer_decrement_cumulative['Halpha/Hbeta'][src],
         'Halpha/Hbeta_err': balmer_decrement_cumulative['Halpha/Hbeta_err'][src],
         'Hgamma/Hbeta': balmer_decrement_cumulative['Hgamma/Hbeta'][src],
@@ -157,7 +190,7 @@ cumulative_A = cumulative_out['A']
 cumulative_B = cumulative_out['B']
 
 # ====================================
-# component-wise, per source per wing -- R23 and kk04_R23 only
+# component-wise, per source per wing -- R23, kk04_R23, KD02_O32, and KK04_O32 only
 # (N2/BPT need NII, which has no per-wing decomposition)
 # ====================================
 component_out = {'A': {}, 'B': {}}
@@ -183,12 +216,26 @@ for src, wings in WING_NAMES.items():
                                oii3726_u, oii3729_u, oiii4959_u, oiii5007_u, hbeta_u)
         kR23_val, kR23_err = kewley_R23(oii3726_f, oiii4959_f, oiii5007_f, hbeta_f,
                                         oii3726_u, oiii4959_u, oiii5007_u, hbeta_u)
+        KD02_O32_val, KD02_O32_err = KD02_O32(oii3726_f, oii3729_f, oiii5007_f,
+                                              oii3726_u, oii3729_u, oiii5007_u)
+        log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
+        KK04_O32_val, KK04_O32_err = KK04_O32(oii3726_f, oiii4959_f, oiii5007_f,
+                                              oii3726_u, oiii4959_u, oiii5007_u)
+        log_KK04_O32_val, log_KK04_O32_err = log_uncert(KK04_O32_val, KK04_O32_err)
 
         component_out[src][wing] = {
             'R23': R23_val,
             'R23_err': R23_err,
             'kk04_R23': kR23_val,
             'kk04_R23_err': kR23_err,
+            'KD02_O32': KD02_O32_val,
+            'KD02_O32_err': KD02_O32_err,
+            'log_KD02_O32': log_KD02_O32_val,
+            'log_KD02_O32_err': log_KD02_O32_err,
+            'KK04_O32': KK04_O32_val,
+            'KK04_O32_err': KK04_O32_err,
+            'log_KK04_O32': log_KK04_O32_val,
+            'log_KK04_O32_err': log_KK04_O32_err,
             'Halpha/Hbeta': balmer_decrement_component['Halpha/Hbeta'][src][wing],
             'Halpha/Hbeta_err': balmer_decrement_component['Halpha/Hbeta_err'][src][wing],
             'Hgamma/Hbeta': balmer_decrement_component['Hgamma/Hbeta'][src][wing],
@@ -204,7 +251,7 @@ print("=" * 60)
 print("Cumulative diagnostics (dust-corrected)")
 print("NOTE: Halpha/Hbeta, Hgamma/Hbeta, and E(B-V) below are computed from")
 print("observed, pre-dust-correction fluxes (see dust_extinction.py) -- only")
-print("N2, [OIII]/Hbeta, R23, and kk04_R23 use dust-corrected fluxes.")
+print("N2, [OIII]/Hbeta, R23, kk04_R23, KD02_O32, and KK04_O32 use dust-corrected fluxes.")
 print("=" * 60)
 for src in ('A', 'B'):
     print(f"Source {src}:")
@@ -213,10 +260,10 @@ for src in ('A', 'B'):
 
 print()
 print("=" * 60)
-print("Component-wise diagnostics (dust-corrected) -- R23 / kk04_R23 only")
+print("Component-wise diagnostics (dust-corrected) -- R23 / kk04_R23 / KD02_O32 / KK04_O32 only")
 print("NOTE: Halpha/Hbeta, Hgamma/Hbeta, and E(B-V) below are computed from")
 print("observed, pre-dust-correction fluxes (see dust_extinction.py) -- only")
-print("R23 and kk04_R23 use dust-corrected fluxes.")
+print("R23, kk04_R23, KD02_O32, and KK04_O32 use dust-corrected fluxes.")
 print("=" * 60)
 for src, wings in component_out.items():
     for wing, vals in wings.items():
@@ -271,7 +318,9 @@ plt.show()
 # csv tables
 # ====================================
 CUMULATIVE_KEYS = [
-    'N2', '[OIII]/Hbeta', 'R23', 'kk04_R23', 'Halpha/Hbeta', 'Hgamma/Hbeta', 'E(B-V)'
+    'N2', 'log_N2', '[OIII]/Hbeta', 'R23', 'kk04_R23', 'log_kk04_R23',
+    'KD02_O32', 'log_KD02_O32', 'KK04_O32', 'log_KK04_O32',
+    'Halpha/Hbeta', 'Hgamma/Hbeta', 'E(B-V)'
 ]
 
 # Halpha/Hbeta, Hgamma/Hbeta, and E(B-V) are computed from observed,
@@ -306,6 +355,10 @@ def build_component_table(src):
         rows.append(dict(wing=wing,
                          R23=vals['R23'], R23_err=vals['R23_err'],
                          kk04_R23=vals['kk04_R23'], kk04_R23_err=vals['kk04_R23_err'],
+                         KD02_O32=vals['KD02_O32'], KD02_O32_err=vals['KD02_O32_err'],
+                         log_KD02_O32=vals['log_KD02_O32'], log_KD02_O32_err=vals['log_KD02_O32_err'],
+                         KK04_O32=vals['KK04_O32'], KK04_O32_err=vals['KK04_O32_err'],
+                         log_KK04_O32=vals['log_KK04_O32'], log_KK04_O32_err=vals['log_KK04_O32_err'],
                          **{
                              # suffixed _observed: computed from observed,
                              # pre-dust-correction fluxes, unlike R23/kk04_R23

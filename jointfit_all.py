@@ -24,6 +24,7 @@ rest = {
     'Hgamma': 4340.47,
     '[OII]3726': 3726.03,
     '[OII]3729': 3728.815,
+    '[NII]6584': 6583.460,
 }
 # window/plot iteration order -- '[OII]' is a single combined window covering both
 # [OII]3726 and [OII]3729 (see windows construction below), distinct from the two
@@ -158,6 +159,7 @@ A_INDICES = {
     'Hbeta': [15, 16],
     'Hgamma': [20, 21],
     '[OII]': [25, 28],
+    '[NII]6584': [31],
 }
 B_INDICES = {
     'Halpha': [2, 3, 4],
@@ -166,6 +168,7 @@ B_INDICES = {
     'Hbeta': [17, 18, 19],
     'Hgamma': [22, 23, 24],
     '[OII]': [26, 27, 29, 30],
+    '[NII]6584': [32],
 }
 
 colors = {
@@ -249,8 +252,16 @@ if __name__ == "__main__":
     windows = {}
     for name in ['Halpha', '[OIII]5007', '[OIII]4959', 'Hbeta', 'Hgamma']:
         rest_wl = rest[name]
-        center = rest_wl * (1 + z_B)
-        zoom = np.where((lam >= center - 50) & (lam <= center + 50))[0]
+        if name == 'Halpha':
+            # widened on the red side to also capture [NII]6584 (fit as extra
+            # components tied to Halpha's central component, see below) --
+            # avoids giving [NII] its own overlapping window/double-counted pixels
+            lo_obs = rest_wl * (1 + z_B) - 50
+            hi_obs = rest['[NII]6584'] * (1 + z_A) + 50
+        else:
+            center = rest_wl * (1 + z_B)
+            lo_obs, hi_obs = center - 50, center + 50
+        zoom = np.where((lam >= lo_obs) & (lam <= hi_obs))[0]
         lam_trim = lam[zoom]
         flux_trim = flux_norm[zoom]
         noise_trim = noise_norm[zoom]
@@ -271,6 +282,27 @@ if __name__ == "__main__":
             'flux_fit': flux_full[~fit_bad],
             'noise_fit': noise_full[~fit_bad],
         }
+
+    # dedicated narrow window purely for a standalone [NII]6584 plot/save --
+    # NOT part of `line_order` (the list concatenated into lam_all for the
+    # joint fit): its pixels are already covered by Halpha's widened window
+    # above, and its Gaussian components (indices 31, 32) are tied to and
+    # fit jointly with Halpha there. Adding it to `line_order` would
+    # double-count those pixels and add a second, unconstrained continuum
+    # term overlapping Halpha's.
+    nii_center = rest['[NII]6584'] * (1 + z_B)
+    zoom_nii = np.where((lam >= nii_center - 30) & (lam <= nii_center + 30))[0]
+    lam_trim = lam[zoom_nii]
+    flux_trim = flux_norm[zoom_nii]
+    noise_trim = noise_norm[zoom_nii]
+    bad = (~np.isfinite(flux_trim) | ~np.isfinite(noise_trim) |
+           (noise_trim < 0))
+    lam_full, flux_full, noise_full = lam_trim[~bad], flux_trim[~bad], noise_trim[~bad]
+    windows['[NII]6584'] = {
+        'lam_full': lam_full,
+        'flux_full': flux_full,
+        'noise_full': noise_full,
+    }
 
     # [OII]3726 and [OII]3729 are only ~7 AA apart in observed wavelength (vs
     # the 50 AA window half-width used above), so they share one combined
@@ -316,8 +348,10 @@ if __name__ == "__main__":
     # 26: [OII]3726_B_red (tied 2)  27: [OII]3726_B_central (tied 3)
     # 28: [OII]3729_A (tied 0)
     # 29: [OII]3729_B_red (tied 2)  30: [OII]3729_B_central (tied 3, wing amplitude bounds)
-    # 31: continuum_Halpha  32: continuum_[OIII]5007  33: continuum_[OIII]4959
-    # 34: continuum_Hbeta  35: continuum_Hgamma  36: continuum_[OII]
+    # 31: [NII]6584_A (tied 0, single component -- no wing decomposition)
+    # 32: [NII]6584_B (tied 3, single component -- no wing decomposition)
+    # 33: continuum_Halpha  34: continuum_[OIII]5007  35: continuum_[OIII]4959
+    # 36: continuum_Hbeta  37: continuum_Hgamma  38: continuum_[OII]
     # ==================
     gaussians = []
 
@@ -386,6 +420,15 @@ if __name__ == "__main__":
         build_tied('[OII]3729_B_central', 3, r_oii3729_ha, amp1_wing * 1.4,
                    (amp0_wing * 0.35, amp1_wing * 1.5)))  # 30
 
+    # [NII]6584: single Gaussian per source (no red/blue wing decomposition,
+    # unlike Halpha/OIII/Hbeta/Hgamma), tied to Halpha's central component.
+    # Amplitude guesses scaled down from Halpha's own central-component
+    # guesses (12, 8) to roughly match the ~1-2% NII/Halpha flux ratio seen
+    # in the legacy fit (output/NII/NII_Halpha_ratios.pkl).
+    r_nii_ha = rest['[NII]6584'] / rest['Halpha']
+    gaussians.append(build_tied('[NII]6584_A', 0, r_nii_ha, 0.3, (0, None)))  # 31
+    gaussians.append(build_tied('[NII]6584_B', 3, r_nii_ha, 0.15, (0, None)))  # 32
+
     continua = []
     for name in line_order:
         lo, hi = windows[name]['lam_full'].min(), windows[name]['lam_full'].max()
@@ -401,6 +444,8 @@ if __name__ == "__main__":
         name: len(gaussians) + i
         for i, name in enumerate(line_order)
     }
+    # [NII]6584 has no continuum of its own -- it shares Halpha's window/continuum
+    CONT_INDICES['[NII]6584'] = CONT_INDICES['Halpha']
 
     compound_model = reduce(operator.add, gaussians + continua)
 
@@ -465,9 +510,12 @@ if __name__ == "__main__":
             mean_param.fixed = True
 
     # ==================
-    # per-line plotting
+    # per-line plotting -- [NII]6584 is appended here (own dedicated
+    # plot/save, matching every other line) even though it's excluded from
+    # `line_order` itself (that list drives the joint lam_all fit array, and
+    # NII's pixels/continuum are already covered via Halpha's window there)
     # ==================
-    for name in line_order:
+    for name in line_order + ['[NII]6584']:
         lam_clean = windows[name]['lam_full']
         flux_clean = windows[name]['flux_full']
         noise_clean = windows[name]['noise_full']
@@ -557,8 +605,8 @@ if __name__ == "__main__":
         )
 
         fig.savefig(
-            f'./output/joint_fit/all_detections/{name}_joint_tied_fit.png')
+            f'./output/joint_fit/jointfit_all/{name}_joint_tied_fit.png')
         with open(
-                f'./output/joint_fit/all_detections/{name}_joint_tied_fit.pkl',
+                f'./output/joint_fit/jointfit_all/{name}_joint_tied_fit.pkl',
                 'wb') as f:
             dill.dump({'model': bestfit_model, 'tie_map': tie_map}, f)

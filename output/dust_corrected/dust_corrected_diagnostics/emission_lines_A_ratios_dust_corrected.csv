@@ -1,8 +1,14 @@
-ratio       , value, uncert, notes
-N2          , 0.022,  0.007, 
-[OIII]/Hbeta, 6.619,  1.277, 
-R23         , 9.626,  1.706, 
-kk04_R23    , 9.165,  1.654, 
-Halpha/Hbeta, 3.528,  0.143, "from observed, pre-dust-correction fluxes"
-Hgamma/Hbeta, 0.466,  0.029, "from observed, pre-dust-correction fluxes"
-E(B-V)      , 0.212,  0.041, derived from observed Halpha/Hbeta decrement
+ratio,value,uncert,notes
+N2,0.022,0.007,
+log_N2,-1.656,0.132,
+[OIII]/Hbeta,6.619,1.277,
+R23,9.626,1.706,
+kk04_R23,9.165,1.654,
+log_kk04_R23,0.962,0.078,
+KD02_O32,8.776,5.75,
+log_KD02_O32,0.943,0.284,
+KK04_O32,30.329,49.412,
+log_KK04_O32,1.482,0.707,
+Halpha/Hbeta,3.528,0.143,"from observed, pre-dust-correction fluxes"
+Hgamma/Hbeta,0.466,0.029,"from observed, pre-dust-correction fluxes"
+E(B-V),0.212,0.041,derived from observed Halpha/Hbeta decrement
