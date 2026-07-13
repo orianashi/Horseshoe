@@ -94,7 +94,7 @@ def flux_correct(flux, flux_err, line, EB_V, EB_V_err):
     flux_correct = flux * 10**exp
     # flux and EB_V treated as independent (no covariance matrix): standard
     # propagation through f = flux * 10^(c*EB_V), c = 0.4*k_line
-    rel_flux_err = flux_err / flux
+    rel_flux_err = flux_err / flux # not the final flux error, this is just math to do the absolute error propogation 
     rel_EB_V_err = 0.4 * k_line * np.log(10) * EB_V_err
     flux_correct_err = flux_correct * np.sqrt(rel_flux_err**2 + rel_EB_V_err**2)
     return flux_correct, flux_correct_err
@@ -198,6 +198,29 @@ for line in LINE_NAMES:
             }
 
 # ====================
+# apply the CUMULATIVE E(B-V) (one well-constrained value per source) to each
+# component's individual flux -- as opposed to component_results above, which
+# derives a separate (often poorly-constrained) E(B-V) per wing and applies it
+# only to that wing's own flux. Uses the same 3-component-B fluxes as
+# component_results (jointfit_all, not the two-component-B refit).
+# ====================
+component_results_cumulativeEBV = {line: {'A': {}, 'B': {}} for line in LINE_NAMES}
+for line in LINE_NAMES:
+    for src in ('A', 'B'):
+        comp_flux = fluxes[line]['component_fluxes'][src]
+        comp_flux_err = fluxes[line]['component_flux_uncerts'][src]
+        wings = WING_NAMES[src][:len(comp_flux)]
+        EBV_val, EBV_err = EBV_cumulative[src]
+        for i, wing in enumerate(wings):
+            corrected, corrected_err = flux_correct(comp_flux[i], comp_flux_err[i], line, EBV_val, EBV_err)
+            component_results_cumulativeEBV[line][src][wing] = {
+                'flux_before': comp_flux[i],
+                'flux_before_err': comp_flux_err[i],
+                'flux_after': corrected,
+                'flux_after_err': corrected_err,
+            }
+
+# ====================
 # print all before and afters
 # ====================
 print("=" * 60)
@@ -268,6 +291,17 @@ for line in LINE_NAMES:
                   f"{r['flux_before']:.3f} +/- {r['flux_before_err']:.3f}  ->  "
                   f"{r['flux_after']:.3f} +/- {r['flux_after_err']:.3f}")
 
+print()
+print("=" * 60)
+print("Component-wise flux correction using CUMULATIVE E(B-V) (before -> after), ergs/s/cm2")
+print("=" * 60)
+for line in LINE_NAMES:
+    for src in ('A', 'B'):
+        for wing, r in component_results_cumulativeEBV[line][src].items():
+            print(f"{line:10s} source {src} {wing:10s}: "
+                  f"{r['flux_before']:.3f} +/- {r['flux_before_err']:.3f}  ->  "
+                  f"{r['flux_after']:.3f} +/- {r['flux_after_err']:.3f}")
+
 # ====================
 # save dust-corrected fluxes
 # ====================
@@ -313,6 +347,18 @@ for line in LINE_NAMES:
             src: np.array([component_results[line][src][wing]['flux_before_err']
                            for wing in WING_NAMES[src]
                            if wing in component_results[line][src]])
+            for src in ('A', 'B')
+        },
+        'component_fluxes_cumulativeEBV': {
+            src: np.array([component_results_cumulativeEBV[line][src][wing]['flux_after']
+                           for wing in WING_NAMES[src]
+                           if wing in component_results_cumulativeEBV[line][src]])
+            for src in ('A', 'B')
+        },
+        'component_flux_uncerts_cumulativeEBV': {
+            src: np.array([component_results_cumulativeEBV[line][src][wing]['flux_after_err']
+                           for wing in WING_NAMES[src]
+                           if wing in component_results_cumulativeEBV[line][src]])
             for src in ('A', 'B')
         },
         'E(B-V)_cumulative': {src: EBV_cumulative[src][0] for src in ('A', 'B')},

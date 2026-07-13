@@ -128,6 +128,8 @@ for src in ('A', 'B'):
                         NII6583['flux_uncerts'][src], Halpha['flux_uncerts'][src])
     OIIIbeta, OIIIbeta_err = ratios(OIII5007['fluxes'][src], Hbeta['fluxes'][src],
                                     OIII5007['flux_uncerts'][src], Hbeta['flux_uncerts'][src])
+    NII_OII, NII_OII_err = ratios(NII6583['fluxes'][src], OII3726['fluxes'][src],
+                                  NII6583['flux_uncerts'][src], OII3726['flux_uncerts'][src])
     R23_val, R23_err = R23(
         OII3726['fluxes'][src], OII3729['fluxes'][src],
         OIII4959['fluxes'][src], OIII5007['fluxes'][src], Hbeta['fluxes'][src],
@@ -146,6 +148,7 @@ for src in ('A', 'B'):
 
     log_N2, log_N2_err = log_uncert(N2, N2_err)
     log_OIIIbeta, log_OIIIbeta_err = log_uncert(OIIIbeta, OIIIbeta_err)
+    log_NII_OII, log_NII_OII_err = log_uncert(NII_OII, NII_OII_err)
     log_kR23, log_kR23_err = log_uncert(kR23_val, kR23_err)
     log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
     log_KK04_O32_val, log_KK04_O32_err = log_uncert(KK04_O32_val, KK04_O32_err)
@@ -164,6 +167,10 @@ for src in ('A', 'B'):
         'log_N2_err': log_N2_err,
         '[OIII]/Hbeta': OIIIbeta,
         '[OIII]/Hbeta_err': OIIIbeta_err,
+        '[NII]/[OII]': NII_OII,
+        '[NII]/[OII]_err': NII_OII_err,
+        'log_NII_OII': log_NII_OII,
+        'log_NII_OII_err': log_NII_OII_err,
         'R23': R23_val,
         'R23_err': R23_err,
         'kk04_R23': kR23_val,
@@ -191,7 +198,7 @@ cumulative_B = cumulative_out['B']
 
 # ====================================
 # component-wise, per source per wing -- R23, kk04_R23, KD02_O32, and KK04_O32 only
-# (N2/BPT need NII, which has no per-wing decomposition)
+# (N2/BPT/[NII]/[OII] need NII, which has no per-wing decomposition)
 # ====================================
 component_out = {'A': {}, 'B': {}}
 for src, wings in WING_NAMES.items():
@@ -245,6 +252,66 @@ for src, wings in WING_NAMES.items():
         }
 
 # ====================================
+# component-wise, per source per wing, using the CUMULATIVE E(B-V) applied to
+# each component's flux (see dust_extinction.py's component_results_cumulativeEBV)
+# instead of a separate E(B-V) derived per wing -- same R23/kk04_R23/KD02_O32/
+# KK04_O32 diagnostics as component_out above (N2/BPT/[NII]/[OII] still need
+# NII, which has no per-wing decomposition, so they stay cumulative-only here
+# too), just built from component_fluxes_cumulativeEBV/
+# component_flux_uncerts_cumulativeEBV, with a single per-source E(B-V) (not
+# per-wing) reported alongside every wing since that's the one value actually
+# applied to all of that source's components.
+# ====================================
+component_out_cumulativeEBV = {'A': {}, 'B': {}}
+for src, wings in WING_NAMES.items():
+    for i, wing in enumerate(wings):
+        try:
+            oii3726_f = OII3726['component_fluxes_cumulativeEBV'][src][i]
+            oii3729_f = OII3729['component_fluxes_cumulativeEBV'][src][i]
+            oiii4959_f = OIII4959['component_fluxes_cumulativeEBV'][src][i]
+            oiii5007_f = OIII5007['component_fluxes_cumulativeEBV'][src][i]
+            hbeta_f = Hbeta['component_fluxes_cumulativeEBV'][src][i]
+            oii3726_u = OII3726['component_flux_uncerts_cumulativeEBV'][src][i]
+            oii3729_u = OII3729['component_flux_uncerts_cumulativeEBV'][src][i]
+            oiii4959_u = OIII4959['component_flux_uncerts_cumulativeEBV'][src][i]
+            oiii5007_u = OIII5007['component_flux_uncerts_cumulativeEBV'][src][i]
+            hbeta_u = Hbeta['component_flux_uncerts_cumulativeEBV'][src][i]
+        except IndexError:
+            continue
+
+        R23_val, R23_err = R23(oii3726_f, oii3729_f, oiii4959_f, oiii5007_f, hbeta_f,
+                               oii3726_u, oii3729_u, oiii4959_u, oiii5007_u, hbeta_u)
+        kR23_val, kR23_err = kewley_R23(oii3726_f, oiii4959_f, oiii5007_f, hbeta_f,
+                                        oii3726_u, oiii4959_u, oiii5007_u, hbeta_u)
+        KD02_O32_val, KD02_O32_err = KD02_O32(oii3726_f, oii3729_f, oiii5007_f,
+                                              oii3726_u, oii3729_u, oiii5007_u)
+        log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
+        KK04_O32_val, KK04_O32_err = KK04_O32(oii3726_f, oiii4959_f, oiii5007_f,
+                                              oii3726_u, oiii4959_u, oiii5007_u)
+        log_KK04_O32_val, log_KK04_O32_err = log_uncert(KK04_O32_val, KK04_O32_err)
+
+        component_out_cumulativeEBV[src][wing] = {
+            'R23': R23_val,
+            'R23_err': R23_err,
+            'kk04_R23': kR23_val,
+            'kk04_R23_err': kR23_err,
+            'KD02_O32': KD02_O32_val,
+            'KD02_O32_err': KD02_O32_err,
+            'log_KD02_O32': log_KD02_O32_val,
+            'log_KD02_O32_err': log_KD02_O32_err,
+            'KK04_O32': KK04_O32_val,
+            'KK04_O32_err': KK04_O32_err,
+            'log_KK04_O32': log_KK04_O32_val,
+            'log_KK04_O32_err': log_KK04_O32_err,
+            'Halpha/Hbeta': balmer_decrement_component['Halpha/Hbeta'][src][wing],
+            'Halpha/Hbeta_err': balmer_decrement_component['Halpha/Hbeta_err'][src][wing],
+            'Hgamma/Hbeta': balmer_decrement_component['Hgamma/Hbeta'][src][wing],
+            'Hgamma/Hbeta_err': balmer_decrement_component['Hgamma/Hbeta_err'][src][wing],
+            'E(B-V)': EBV_cumulative['value'][src],
+            'E(B-V)_err': EBV_cumulative['err'][src],
+        }
+
+# ====================================
 # print all before and afters
 # ====================================
 print("=" * 60)
@@ -260,12 +327,29 @@ for src in ('A', 'B'):
 
 print()
 print("=" * 60)
-print("Component-wise diagnostics (dust-corrected) -- R23 / kk04_R23 / KD02_O32 / KK04_O32 only")
-print("NOTE: Halpha/Hbeta, Hgamma/Hbeta, and E(B-V) below are computed from")
-print("observed, pre-dust-correction fluxes (see dust_extinction.py) -- only")
-print("R23, kk04_R23, KD02_O32, and KK04_O32 use dust-corrected fluxes.")
+print("Component-wise diagnostics using COMPONENT-WISE E(B-V) (dust-corrected)")
+print("-- R23 / kk04_R23 / KD02_O32 / KK04_O32 only")
+print("NOTE: Halpha/Hbeta, Hgamma/Hbeta below are computed from observed,")
+print("pre-dust-correction fluxes (see dust_extinction.py) -- only")
+print("R23, kk04_R23, KD02_O32, and KK04_O32 use dust-corrected fluxes, each")
+print("wing corrected using its OWN per-wing E(B-V).")
 print("=" * 60)
 for src, wings in component_out.items():
+    for wing, vals in wings.items():
+        print(f"Source {src} {wing}:")
+        for key, val in vals.items():
+            print(f"  {key}: {val:.4f}")
+
+print()
+print("=" * 60)
+print("Component-wise diagnostics using CUMULATIVE E(B-V) (dust-corrected)")
+print("-- R23 / kk04_R23 / KD02_O32 / KK04_O32 only")
+print("NOTE: Halpha/Hbeta, Hgamma/Hbeta below are computed from observed,")
+print("pre-dust-correction fluxes (see dust_extinction.py) -- only")
+print("R23, kk04_R23, KD02_O32, and KK04_O32 use dust-corrected fluxes, every")
+print("wing of a source corrected using that SAME source's cumulative E(B-V).")
+print("=" * 60)
+for src, wings in component_out_cumulativeEBV.items():
     for wing, vals in wings.items():
         print(f"Source {src} {wing}:")
         for key, val in vals.items():
@@ -318,9 +402,9 @@ plt.show()
 # csv tables
 # ====================================
 CUMULATIVE_KEYS = [
-    'N2', 'log_N2', '[OIII]/Hbeta', 'R23', 'kk04_R23', 'log_kk04_R23',
-    'KD02_O32', 'log_KD02_O32', 'KK04_O32', 'log_KK04_O32',
-    'Halpha/Hbeta', 'Hgamma/Hbeta', 'E(B-V)'
+    'N2', 'log_N2', '[OIII]/Hbeta', '[NII]/[OII]', 'log_NII_OII', 'R23',
+    'kk04_R23', 'log_kk04_R23', 'KD02_O32', 'log_KD02_O32', 'KK04_O32',
+    'log_KK04_O32', 'Halpha/Hbeta', 'Hgamma/Hbeta', 'E(B-V)'
 ]
 
 # Halpha/Hbeta, Hgamma/Hbeta, and E(B-V) are computed from observed,
@@ -346,12 +430,12 @@ def build_cumulative_table(src):
     return pd.DataFrame(rows).round(3)
 
 
-def build_component_table(src):
+def build_component_table(src, out):
     rows = []
     for wing in WING_NAMES[src]:
-        if wing not in component_out[src]:
+        if wing not in out[src]:
             continue
-        vals = component_out[src][wing]
+        vals = out[src][wing]
         rows.append(dict(wing=wing,
                          R23=vals['R23'], R23_err=vals['R23_err'],
                          kk04_R23=vals['kk04_R23'], kk04_R23_err=vals['kk04_R23_err'],
@@ -373,13 +457,24 @@ def build_component_table(src):
 
 df_A_cumulative = build_cumulative_table('A')
 df_B_cumulative = build_cumulative_table('B')
-df_A_component = build_component_table('A')
-df_B_component = build_component_table('B')
+
+# component-wise tables come in two flavors, distinguished by which E(B-V)
+# was applied to the component fluxes -- each wing's OWN per-wing E(B-V)
+# (component_out, "componentEBV") vs. that source's single well-constrained
+# cumulative E(B-V) applied uniformly to every wing (component_out_cumulativeEBV,
+# "cumulativeEBV"). File names below are suffixed accordingly so it's never
+# ambiguous which correction a given table used.
+df_A_component_componentEBV = build_component_table('A', component_out)
+df_B_component_componentEBV = build_component_table('B', component_out)
+df_A_component_cumulativeEBV = build_component_table('A', component_out_cumulativeEBV)
+df_B_component_cumulativeEBV = build_component_table('B', component_out_cumulativeEBV)
 
 df_A_cumulative.to_csv(f'{DIAGDIR}/emission_lines_A_ratios_dust_corrected.csv', index=False)
 df_B_cumulative.to_csv(f'{DIAGDIR}/emission_lines_B_ratios_dust_corrected.csv', index=False)
-df_A_component.to_csv(f'{DIAGDIR}/wing_ratios_dust_corrected_A.csv', index=False)
-df_B_component.to_csv(f'{DIAGDIR}/wing_ratios_dust_corrected_B.csv', index=False)
+df_A_component_componentEBV.to_csv(f'{DIAGDIR}/wing_ratios_dust_corrected_componentEBV_A.csv', index=False)
+df_B_component_componentEBV.to_csv(f'{DIAGDIR}/wing_ratios_dust_corrected_componentEBV_B.csv', index=False)
+df_A_component_cumulativeEBV.to_csv(f'{DIAGDIR}/wing_ratios_dust_corrected_cumulativeEBV_A.csv', index=False)
+df_B_component_cumulativeEBV.to_csv(f'{DIAGDIR}/wing_ratios_dust_corrected_cumulativeEBV_B.csv', index=False)
 
 print()
 print("Source A cumulative ratios:")
@@ -388,16 +483,26 @@ print()
 print("Source B cumulative ratios:")
 print(df_B_cumulative.to_string(index=False))
 print()
-print("Source A component-wise ratios:")
-print(df_A_component.to_string(index=False))
+print("Source A component-wise ratios (component-wise E(B-V)):")
+print(df_A_component_componentEBV.to_string(index=False))
 print()
-print("Source B component-wise ratios:")
-print(df_B_component.to_string(index=False))
+print("Source B component-wise ratios (component-wise E(B-V)):")
+print(df_B_component_componentEBV.to_string(index=False))
+print()
+print("Source A component-wise ratios (cumulative E(B-V)):")
+print(df_A_component_cumulativeEBV.to_string(index=False))
+print()
+print("Source B component-wise ratios (cumulative E(B-V)):")
+print(df_B_component_cumulativeEBV.to_string(index=False))
 
 # ====================================
 # save all the ratios
 # ====================================
-with open(f'{DIAGDIR}/A_ratios_dust_corrected.pkl', 'wb') as fA:
+with open(f'{DIAGDIR}/A_ratios_dust_corrected_componentEBV.pkl', 'wb') as fA:
     dill.dump({'cumulative': cumulative_A, 'component': component_out['A']}, fA)
-with open(f'{DIAGDIR}/B_ratios_dust_corrected.pkl', 'wb') as fB:
+with open(f'{DIAGDIR}/B_ratios_dust_corrected_componentEBV.pkl', 'wb') as fB:
     dill.dump({'cumulative': cumulative_B, 'component': component_out['B']}, fB)
+with open(f'{DIAGDIR}/A_ratios_dust_corrected_cumulativeEBV.pkl', 'wb') as fA:
+    dill.dump({'cumulative': cumulative_A, 'component': component_out_cumulativeEBV['A']}, fA)
+with open(f'{DIAGDIR}/B_ratios_dust_corrected_cumulativeEBV.pkl', 'wb') as fB:
+    dill.dump({'cumulative': cumulative_B, 'component': component_out_cumulativeEBV['B']}, fB)

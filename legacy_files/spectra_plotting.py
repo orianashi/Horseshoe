@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import astropy.units as u
 from matplotlib.ticker import MultipleLocator
+from specutils.utils.wcs_utils import air_to_vac
 
 plt.ion()
 
@@ -49,7 +50,8 @@ lam_VIS = crval_VIS + cdelt_VIS * (
 lam_UVB_um = lam_UVB * u.um
 lam_VIS_um = lam_VIS * u.um
 lam_NIR_um = lam_NIR * u.um
-lam_UVB_AA = lam_UVB_um.to(u.AA)
+lam_UVB_AA = air_to_vac(lam_UVB_um.to(
+    u.AA))  # X-Shooter UVB arm is calibrated in air wavelengths
 lam_VIS_AA = lam_VIS_um.to(u.AA)
 lam_NIR_AA = lam_NIR_um.to(u.AA)
 lam_UVB = lam_UVB_AA.value
@@ -172,7 +174,7 @@ axes[0].fill_between(lam_uvb_rest,
                      color='lightgrey',
                      label="1 sigma")
 axes[0].set_title('Rest-frame UVB', pad=15)
-axes[0].set_xlabel("Observed Wavelength [Angstroms]", fontsize=8)
+axes[0].set_xlabel("Observed Wavelength [Angstroms], Vacuum", fontsize=8)
 axes[0].set_ylabel("Normalised Flux [erg/s/cm2]", fontsize=8)
 
 axes[1].plot(lam_vis_rest, flux_vis_smooth, ds='steps')
@@ -184,7 +186,7 @@ axes[1].fill_between(lam_vis_rest,
                      color='lightgrey',
                      label="1 sigma")
 axes[1].set_title('Rest-frame VIS', pad=15)
-axes[1].set_xlabel("Observed Wavelength [Angstroms]", fontsize=8)
+axes[1].set_xlabel("Observed Wavelength [Angstroms], Air", fontsize=8)
 axes[1].set_ylabel("Normalised Flux [erg/s/cm2]", fontsize=8)
 
 axes[2].plot(lam_nir_rest, flux_nir_smooth, ds='steps')
@@ -196,7 +198,7 @@ axes[2].fill_between(lam_nir_rest,
                      color='lightgrey',
                      label="1 sigma")
 axes[2].set_title('Rest-frame NIR', pad=15)
-axes[2].set_xlabel("Observed Wavelength [Angstroms]", fontsize=8)
+axes[2].set_xlabel("Observed Wavelength [Angstroms, Air]", fontsize=8)
 axes[2].set_ylabel("Normalised Flux [erg/s/cm2]", fontsize=8)
 
 #plot the absorption lines !
