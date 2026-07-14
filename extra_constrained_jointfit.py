@@ -443,37 +443,48 @@ if __name__ == "__main__":
     # ==================
     # extra constraint (this file's whole point): tighten the master
     # components' mean bounds around the already-converged jointfit_all.py
-    # fit, instead of the wide raw-redshift-guess range. Only mean bounds are
-    # touched -- an earlier version of this also tightened stddev bounds and
-    # added a hard amplitude_central > amplitude_wing bound, but empirically
-    # (checked against jointfit_all.py's covariance matrix) *any* additional
-    # bound on stddev or amplitude inflated the reported amplitude
-    # correlation/uncertainty for the well-behaved B-source red/central
-    # pairs (e.g. Halpha_B: -0.937 -> -0.98, uncertainty several times
-    # larger), even when the bound was nowhere near active -- this is a
-    # single 33-parameter joint fit, so any added bound perturbs the whole
-    # shared covariance-matrix inversion. Mean-only tightening avoided that
-    # and genuinely improved the correlation (Halpha_B: -0.937 -> -0.679).
+    # fit, instead of the wide raw-redshift-guess range. An earlier version
+    # of this also tightened stddev bounds and added a hard
+    # amplitude_central > amplitude_wing bound, but empirically (checked
+    # against jointfit_all.py's covariance matrix) *any* additional bound on
+    # stddev or amplitude inflated the reported amplitude correlation/
+    # uncertainty for the well-behaved B-source red/central pairs (e.g.
+    # Halpha_B: -0.937 -> -0.98, uncertainty several times larger), even
+    # when the bound was nowhere near active -- this is a single
+    # 33-parameter joint fit, so any added bound perturbs the whole shared
+    # covariance-matrix inversion. Mean-only tightening avoided that and
+    # genuinely improved the B-source correlation (Halpha_B: -0.937 ->
+    # -0.679).
     #
-    # Halpha_A_red (index 1) is excluded: every other line's own "A_red"
-    # component ties its mean/stddev to this one master by ratio
-    # (MeanTie/StdTie), and tightening its mean bound collapsed its stddev
-    # to a near-delta-function (0.07 AA, down from ~2.1 AA) -- since that
-    # tiny width gets inherited by ratio everywhere, it blew up
-    # [OIII]5007_A_red's amplitude to ~15600 and [OIII]4959_A_red/
-    # Hgamma_A_red collapsed to 0. Leaving index 1 at its original
-    # (untightened) bounds reproduces jointfit_all.py's stable fit for it.
+    # Halpha_A_red (index 1) initially had its mean tightening skipped
+    # entirely: every other line's own "A_red" component ties its
+    # mean/stddev to this one master by ratio (MeanTie/StdTie), and
+    # tightening its mean bound collapsed its stddev to a near-delta-function
+    # (0.07 AA, down from ~2.1 AA) -- since that tiny width gets inherited by
+    # ratio everywhere, it blew up [OIII]5007_A_red's amplitude to ~15600 and
+    # [OIII]4959_A_red/Hgamma_A_red collapsed to 0. But leaving index 1
+    # untouched while tightening 0/2/3/4 turned out to be its own problem:
+    # it made the A-source central/red-wing correlation *worse* than
+    # jointfit_all.py for every line (e.g. Halpha_A: 0.132 -> 0.546, central
+    # uncertainty 0.87 -> 1.64) -- an asymmetric fix that just moved the
+    # degeneracy elsewhere. Now tightening index 1's mean too, WITH a
+    # stddev floor (lower bound only, upper bound unchanged) to block the
+    # near-zero collapse instead of leaving stddev fully free.
     # ==================
     MEAN_RANGE_CENTRAL = 1.5  # AA, down from 3
     MEAN_RANGE_WING = 2.0  # AA, down from 5
-    TIGHTEN_MEAN_INDICES = {0, 2, 3, 4}  # Halpha_A_central, B_red, B_central, B_blue
-    master_wing_indices = {2, 4}  # B_red, B_blue (central: 0, 3)
+    STDDEV_FLOOR_A_RED = 1.0  # AA -- well below prior fit's ~2.1 AA, well above the pathological ~0.07 AA collapse
+    TIGHTEN_MEAN_INDICES = {0, 1, 2, 3, 4}  # all 5 masters
+    master_wing_indices = {1, 2, 4}  # A_red, B_red, B_blue (central: 0, 3)
     for i in TIGHTEN_MEAN_INDICES:
         prior_mean = getattr(prior_model, f'mean_{i}').value
         mean_range = MEAN_RANGE_WING if i in master_wing_indices else MEAN_RANGE_CENTRAL
         gaussians[i].mean.bounds = (prior_mean - mean_range,
                                      prior_mean + mean_range)
         gaussians[i].mean = prior_mean
+
+    old_lo, old_hi = gaussians[1].stddev.bounds
+    gaussians[1].stddev.bounds = (STDDEV_FLOOR_A_RED, old_hi)
 
     continua = []
     for name in line_order:
