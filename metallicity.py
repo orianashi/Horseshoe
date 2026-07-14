@@ -5,7 +5,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
-from sympy import symbols, Eq, solveset
+
+# solve k_n*x^n + ... + k1*x + (k0 - target) = 0 and return the real roots,
+# sorted ascending, as a plain array (drops any complex roots)
+def _real_roots(coeffs_high_to_low, k0, target):
+    poly = list(coeffs_high_to_low)
+    poly[-1] = poly[-1] - target
+    roots = np.roots(poly)
+    real = np.sort(roots[np.abs(roots.imag) < 1e-6].real)
+    return real
 
 # load in everything 
 
@@ -21,9 +29,7 @@ def n2ha_q1_e8(n2ha, n2ha_err):
     k2 = -266.015
     k3 = 21.6024
     k4 = -0.6566
-    x = symbols('x')
-    equation = Eq(k0 + k1*x+k2*x**2 + k3 * x**3 + k4*x**4, n2ha)
-    abundance = solveset(equation,x)
+    abundance = _real_roots([k4, k3, k2, k1, k0], k0, n2ha)
     abundance_err = "placeholder"
     return abundance, abundance_err
 
@@ -33,9 +39,7 @@ def n2ha_q3_e8(n2ha, n2ha_err):
     k2 = -272.883
     k3 = 22.0132
     k4 = -0.6646
-    x = symbols('x')
-    equation = Eq(k0 + k1*x+k2*x**2 + k3 * x**3 + k4*x**4, n2ha)
-    abundance = solveset(equation,x)
+    abundance = _real_roots([k4, k3, k2, k1, k0], k0, n2ha)
     abundance_err = "placeholder"
     return abundance, abundance_err
 
@@ -86,9 +90,7 @@ def high_metallicity_q_halfsolar(o32, o32_err):
     k1=27.5082
     k2 = -3.19126
     k3 = 0.128252
-    x = symbols('x')
-    equation = Eq(k0 + k1*x+k2*x**2 + k3 * x**3, o32)
-    q = solveset(equation,x)
+    q = _real_roots([k3, k2, k1, k0], k0, o32)
     q_err = "placeholder"
     return q, q_err
 
