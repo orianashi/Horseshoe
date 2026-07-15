@@ -9,11 +9,11 @@ from fit_uv_lines import rest
 # ==================
 # CCM89 (Cardelli, Clayton & Mathis 1989, ApJ 345, 245) UV-branch extinction
 # law. dust_extinction.py's k(wl) only implements CCM89's optical/NIR branch
-# (valid 1.1 <= x <= 3.3 um^-1, i.e. rest lambda ~3030-9091 AA) -- our SiIII
-# diagnostic's rest wavelengths (1808-1892 AA, x ~ 5.24-5.53 um^-1) fall in
-# CCM89's separate UV branch (3.3 <= x <= 8.0 um^-1) and need its own a(x)/
-# b(x) polynomials. All three wavelengths here have x < 5.9, so the FUV
-# "bump" terms F_a/F_b (only nonzero for x >= 5.9) are omitted.
+# (valid 1.1 <= x <= 3.3 um^-1, i.e. rest lambda ~3030-9091 AA) -- the lines
+# dust-corrected here (1808-2325 AA, x ~ 4.30-5.53 um^-1) fall in CCM89's
+# separate UV branch (3.3 <= x <= 8.0 um^-1) and need its own a(x)/b(x)
+# polynomials. All wavelengths here have x < 5.9, so the FUV "bump" terms
+# F_a/F_b (only nonzero for x >= 5.9) are omitted.
 # ==================
 R_v = 3.1  # same value used throughout dust_extinction.py
 
@@ -47,8 +47,10 @@ FLUXDIR = f'{UV_DIAGDIR}/output/fluxes'
 DUST_FLUXDIR = f'{UV_DIAGDIR}/output/fluxes_dust_corrected'
 os.makedirs(DUST_FLUXDIR, exist_ok=True)
 
-# the three lines the SiIII]/[SiII] diagnostic needs
+# every line either ionization-parameter diagnostic needs, source A only
 SIIII_LINES = ['[SiII]1808', '[SiIII]1883', '[SiIII]1892']
+CIII_LINES = ['[CIII]1907', '[CIII]1909', '[CII]2325']
+LINES_TO_CORRECT = SIIII_LINES + CIII_LINES
 
 if __name__ == "__main__":
     with open(f'{FLUXDIR}/uv_line_fluxes.pkl', 'rb') as f:
@@ -66,11 +68,21 @@ if __name__ == "__main__":
     print(f"Source A cumulative E(B-V) = {EBV:.4f} +/- {EBV_err:.4f}")
 
     out_rows = []
-    for line in SIIII_LINES:
+    for line in LINES_TO_CORRECT:
         r = flux[(line, 'A')]
         k_line = k_uv(rest[line])
-        flux_after, flux_after_err = flux_correct(r['flux'], r['flux_uncert'],
-                                                    k_line, EBV, EBV_err)
+
+        # "dust correct the fluxes for the detections" -- an upper limit
+        # passes through unchanged rather than being scaled by an uncertain
+        # correction on top of an already-uncertain 3-sigma bound.
+        if r['is_upper_limit']:
+            flux_after, flux_after_err = r['flux'], r['flux_uncert']
+            applied = False
+        else:
+            flux_after, flux_after_err = flux_correct(r['flux'], r['flux_uncert'],
+                                                        k_line, EBV, EBV_err)
+            applied = True
+
         out_rows.append({
             'line': line,
             'source': 'A',
@@ -79,20 +91,20 @@ if __name__ == "__main__":
             'flux_after': flux_after,
             'flux_after_uncert': flux_after_err,
             'is_upper_limit': r['is_upper_limit'],
+            'dust_correction_applied': applied,
             'E(B-V)': EBV,
             'E(B-V)_uncert': EBV_err,
             'k_uv': k_line,
-            'dust_corrected': True,
             'units': r['units'],
         })
+        tag = '' if applied else '  [upper limit -- passed through unchanged]'
         print(f"{line:14s} A  flux: {r['flux']:.4g} +/- {r['flux_uncert']:.4g}  ->  "
-              f"{flux_after:.4g} +/- {flux_after_err:.4g}  (k_uv={k_line:.3f})"
-              f"{'  [3-sigma UPPER LIMIT]' if r['is_upper_limit'] else ''}")
+              f"{flux_after:.4g} +/- {flux_after_err:.4g}  (k_uv={k_line:.3f}){tag}")
 
     df = pd.DataFrame(out_rows)
-    df.to_csv(f'{DUST_FLUXDIR}/uv_line_fluxes_SiIII_dust_corrected.csv', index=False)
-    with open(f'{DUST_FLUXDIR}/uv_line_fluxes_SiIII_dust_corrected.pkl', 'wb') as f:
+    df.to_csv(f'{DUST_FLUXDIR}/uv_line_fluxes_dust_corrected.csv', index=False)
+    with open(f'{DUST_FLUXDIR}/uv_line_fluxes_dust_corrected.pkl', 'wb') as f:
         dill.dump(out_rows, f)
 
-    print(f"\nSaved dust-corrected SiIII flux table to "
-          f"{DUST_FLUXDIR}/uv_line_fluxes_SiIII_dust_corrected.csv")
+    print(f"\nSaved dust-corrected UV flux table to "
+          f"{DUST_FLUXDIR}/uv_line_fluxes_dust_corrected.csv")
