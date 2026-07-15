@@ -22,10 +22,41 @@ def load_pkl(path):
     with open(path, 'rb') as f:
         return dill.load(f)
 
-A = load_pkl(f'{DIAGDIR}/A_ratios_dust_corrected_cumulativeEBV.pkl')['cumulative']
-B = load_pkl(f'{DIAGDIR}/B_ratios_dust_corrected_cumulativeEBV.pkl')['cumulative']
+# 'component' is keyed by wing name (see diagnostics_dust_corrected.py's
+# WING_NAMES: A has ['central', 'red_wing'], B has ['red_wing', 'central',
+# 'blue_wing']) -- 'central' exists for both, giving the same ratio fields
+# as the cumulative dict (R23, KD02_O32, log_N2, etc.) but for just the
+# central velocity component instead of the source's full (all-components)
+# flux.
+A_pkl = load_pkl(f'{DIAGDIR}/A_ratios_dust_corrected_cumulativeEBV.pkl')
+B_pkl = load_pkl(f'{DIAGDIR}/B_ratios_dust_corrected_cumulativeEBV.pkl')
+A = A_pkl['cumulative']
+B = B_pkl['cumulative']
+A_central = A_pkl['component']['central']
+B_central = B_pkl['component']['central']
 
+# ==================
+# KK04 IONIZATION PARAMETER FOR SOURCE A  
+# ==================
+def kk04_q(z, z_err, kk04_o32, kk04_o32_err):
+    y = kk04_o32
+    p1 = 32.81 - 1.153*y**2 + z*(-3.396 - 0.025*y + 0.1444*y**2)
+    p2 = 4.603 - 0.3119*y - 0.163*y**2 + z*(-0.48 + 0.0271*y + 0.02037*y**2)
+    logq = p1 * (p2**(-1))
 
+    # logq = p1(y,z)/p2(y,z) -- quotient rule for each partial, then
+    # combine in quadrature (y and z treated as independent, same
+    # assumption as z94_m91's two-variable propagation above)
+    dp1_dy = -2*1.153*y + z*(-0.025 + 2*0.1444*y)
+    dp1_dz = -3.396 - 0.025*y + 0.1444*y**2
+    dp2_dy = -0.3119 - 2*0.163*y + z*(0.0271 + 2*0.02037*y)
+    dp2_dz = -0.48 + 0.0271*y + 0.02037*y**2
+
+    dlogq_dy = (dp1_dy*p2 - p1*dp2_dy) / p2**2
+    dlogq_dz = (dp1_dz*p2 - p1*dp2_dz) / p2**2
+
+    logq_err = np.sqrt((dlogq_dy * kk04_o32_err)**2 + (dlogq_dz * z_err)**2)
+    return logq, logq_err
 # ==================
 # KD02 PROCESS FOR METALLICITIES below 8.5  
 # ==================
@@ -173,6 +204,9 @@ def z94_m91(KK04_r23, KK04_r23_err, kk04_o32, kk04_o32_err):
 
 # step 3b - if step 2 produces estimate velow 8.5, use R23 method 
 
+# ========================
+# Calculate cumulative metallicity 
+# ========================
 # SOURCE B
 # ITERATION 1
 abundance_B_initialguess = n2ha_q1_e8(B['log_N2'], B['log_N2_err'])[0] #7.99
@@ -195,21 +229,60 @@ q_B = (qb_fifthsolar + qb_tenthsolar)/2
 q_B_unc = 0.5*np.sqrt(qb_fifthsolar_unc**2 + qb_tenthsolar_unc**2)
 
 print(f"Source B 12+log(O/H) = {abundance_B:.3f} +- {abundance_B_unc:.3f}")
-print(f"Source B log(q) = {np.log10(q_B):.3f} +-  {np.log10(q_B_unc):.3f}")
+# q_B/q_B_unc are linear (cm/s) -- np.log10(q_B_unc) is NOT valid error
+# propagation into log-space (that's the log of the error bar itself, not
+# the propagated log-space uncertainty). Correct delta method, same as
+# log_uncert() elsewhere in this codebase: sigma_log(q) = sigma_q/(q*ln10).
+log_q_B = np.log10(q_B)
+log_q_B_unc = q_B_unc / (q_B * np.log(10))
+print(f"Source B log(q) = {log_q_B:.3f} +- {log_q_B_unc:.3f}")
 
 # SOURCE A
+"""
 # using the low-metallicity process (ruled out)
 n2ha_q3_e8(A['log_N2'], A['log_N2_err'])[0]  #8.54
 z_halfsolar_combined(A['log_KD02_O32'], A['log_KD02_O32_err'])[0] #4.3e8
 r23_q3_e8_combined(A['log_kk04_R23'], A['log_kk04_R23_err'])[0] # HERE IS WHERE THERE IS A NAN
 # also, abundanced in 8.5 - 8.9 region can't be reliably determined with R23
+"""
 
 #using the high-metallicity process
 abundance_A, abundance_A_unc_input = n2o2_combined(A['log_NII_OII'], A['log_NII_OII_err']) # 8.83
 abundance_A_unc = np.sqrt(0.04**2 + abundance_A_unc_input**2) #accounts for scatter of [NII]/[OII] method table 4 KD02
 # the [NII]/[OII] diagnostic is only valid for ionization parameters between 5e6 and 3e8, so this is technically an extrapolation
 high_metallicity_q_solar(A['log_KD02_O32'], A['log_KD02_O32_err']) #log(q)=9.14
-
+kk04_q_A, kk04_q_A_unc = kk04_q(abundance_A, abundance_A_unc, A['log_KK04_O32'], A['log_KK04_O32_err'])
 # FINAL
-print(f"Source A 12+log(O/H): {abundance_A:.3f} +- {abundance_A_unc:.3f}")
+print(f"Source A 12+log(O/H): {abundance_A:.5f} +- {abundance_A_unc:.5f}")
 
+# ========================
+# Calculate galaxy component metallicity  
+# ========================
+# SOURCE B
+# ITERATION 1
+abundance_Bgal_initialguess = n2ha_q1_e8(B_central['log_N2'], B_central['log_N2_err'])[0] #8.18
+qbgal_fifthsolar, qbgal_fifthsolar_unc = z_fifthsolar_combined(B_central['log_KD02_O32'], B_central['log_KD02_O32_err']) #1e8.02
+abundance_Bgal_qe8, abundance_Bgal_qe8_unc = r23_q1_e8_combined(B_central['log_kk04_R23'], B_central['log_kk04_R23_err']) #8.016 
+#which is close to 0.1Z solar 
+
+#ITERATION 2 
+qbgal_tenthsolar, qbgal_tenthsolar_unc = z_tenthsolar_combined(B_central['log_KD02_O32'], B_central['log_KD02_O32_err']) #7e7 
+abundance_Bgal_q8e7, abundance_Bgal_q8e7_unc = r23_q8_e7_combined(B_central['log_kk04_R23'], B_central['log_kk04_R23_err']) #1e8.14
+#now has returned to being close to 0.2Z_solar again, and ionization parameter oscillated similarly. so follow same process as cumulative 
+abundance_Bgal = (abundance_Bgal_qe8 + abundance_Bgal_q8e7)/2
+abundance_Bgal_unc_input = 0.5*np.sqrt(abundance_Bgal_qe8_unc**2 + abundance_Bgal_q8e7_unc**2 )
+abundance_Bgal_unc = np.sqrt(0.07**2 +abundance_Bgal_unc_input**2)
+q_Bgal = (qbgal_fifthsolar + qbgal_tenthsolar)/2
+q_Bgal_unc = 0.5*np.sqrt(qbgal_fifthsolar_unc**2 + qbgal_tenthsolar_unc**2)
+
+print(f"Source B gal 12+log(O/H) = {abundance_Bgal:.3f} +- {abundance_Bgal_unc:.3f}")
+# same fix as Source B cumulative above -- q_Bgal/q_Bgal_unc are linear
+log_q_Bgal = np.log10(q_Bgal)
+log_q_Bgal_unc = q_Bgal_unc / (q_Bgal * np.log(10))
+print(f"Source B gal log(q) = {log_q_Bgal:.3f} +- {log_q_Bgal_unc:.3f}")
+
+# SOURCE A is the same abundance as the cumulative, because source A had only one component of OII
+high_metallicity_q_solar(A_central['log_KD02_O32'], A_central['log_KD02_O32_err'])
+kk04_q_Agal, kk04_q_Agal_unc = kk04_q(abundance_A, abundance_A_unc, A_central['log_KK04_O32'], A_central['log_KK04_O32_err'])
+
+print("For Source A log(q) please reference Notion...")

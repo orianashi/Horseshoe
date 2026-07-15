@@ -117,6 +117,29 @@ def bpt_line(log_NIIalpha, z):
     return 0.61 / denom + 1.2 + 0.03 * z
 
 
+# [NII]6583 was fit as a single un-decomposed Gaussian per source (see
+# dust_extinction.py's NII6583_results -- no component_fluxes breakdown
+# exists for it, unlike every other line here), so there's no way to know
+# from the fit itself how much of its flux belongs to which velocity
+# component. Per-wing N2/[NII]/[OII] are therefore only computed for the
+# 'central' wing, under the assumption that ALL of [NII]'s flux belongs to
+# the central component -- the same convention this file already applies
+# implicitly to every other single-Gaussian ("roleless") component, e.g.
+# [OII]3726_A, which occupies index 0 (WING_NAMES[src][0] == 'central') in
+# the per-wing loops below with no special-casing needed.
+def add_central_N2_NII_OII(component_dict, halpha_f, halpha_u, oii3726_f, oii3726_u, nii_f, nii_u):
+    N2_val, N2_err = ratios(nii_f, halpha_f, nii_u, halpha_u)
+    NII_OII_val, NII_OII_err = ratios(nii_f, oii3726_f, nii_u, oii3726_u)
+    log_N2_val, log_N2_err = log_uncert(N2_val, N2_err)
+    log_NII_OII_val, log_NII_OII_err = log_uncert(NII_OII_val, NII_OII_err)
+    component_dict['central'].update({
+        'N2': N2_val, 'N2_err': N2_err,
+        'log_N2': log_N2_val, 'log_N2_err': log_N2_err,
+        '[NII]/[OII]': NII_OII_val, '[NII]/[OII]_err': NII_OII_err,
+        'log_NII_OII': log_NII_OII_val, 'log_NII_OII_err': log_NII_OII_err,
+    })
+
+
 # ====================================
 # cumulative, per source
 # ====================================
@@ -197,8 +220,10 @@ cumulative_A = cumulative_out['A']
 cumulative_B = cumulative_out['B']
 
 # ====================================
-# component-wise, per source per wing -- R23, kk04_R23, KD02_O32, and KK04_O32 only
-# (N2/BPT/[NII]/[OII] need NII, which has no per-wing decomposition)
+# component-wise, per source per wing -- R23, kk04_R23, KD02_O32, and KK04_O32
+# for every wing; N2/[NII]/[OII] added afterward for 'central' only (see
+# add_central_N2_NII_OII above -- BPT still stays cumulative-only, since it
+# plots the source's overall position, not a per-component one)
 # ====================================
 component_out = {'A': {}, 'B': {}}
 for src, wings in WING_NAMES.items():
@@ -223,6 +248,7 @@ for src, wings in WING_NAMES.items():
                                oii3726_u, oii3729_u, oiii4959_u, oiii5007_u, hbeta_u)
         kR23_val, kR23_err = kewley_R23(oii3726_f, oiii4959_f, oiii5007_f, hbeta_f,
                                         oii3726_u, oiii4959_u, oiii5007_u, hbeta_u)
+        log_kR23_val, log_kR23_err = log_uncert(kR23_val, kR23_err)
         KD02_O32_val, KD02_O32_err = KD02_O32(oii3726_f, oii3729_f, oiii5007_f,
                                               oii3726_u, oii3729_u, oiii5007_u)
         log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
@@ -235,6 +261,8 @@ for src, wings in WING_NAMES.items():
             'R23_err': R23_err,
             'kk04_R23': kR23_val,
             'kk04_R23_err': kR23_err,
+            'log_kk04_R23': log_kR23_val,
+            'log_kk04_R23_err': log_kR23_err,
             'KD02_O32': KD02_O32_val,
             'KD02_O32_err': KD02_O32_err,
             'log_KD02_O32': log_KD02_O32_val,
@@ -251,13 +279,21 @@ for src, wings in WING_NAMES.items():
             'E(B-V)_err': EBV_component['err'][src][wing],
         }
 
+for src in ('A', 'B'):
+    idx_central = WING_NAMES[src].index('central')
+    add_central_N2_NII_OII(
+        component_out[src],
+        Halpha['component_fluxes'][src][idx_central], Halpha['component_flux_uncerts'][src][idx_central],
+        OII3726['component_fluxes'][src][idx_central], OII3726['component_flux_uncerts'][src][idx_central],
+        NII6583['fluxes'][src], NII6583['flux_uncerts'][src])
+
 # ====================================
 # component-wise, per source per wing, using the CUMULATIVE E(B-V) applied to
 # each component's flux (see dust_extinction.py's component_results_cumulativeEBV)
 # instead of a separate E(B-V) derived per wing -- same R23/kk04_R23/KD02_O32/
-# KK04_O32 diagnostics as component_out above (N2/BPT/[NII]/[OII] still need
-# NII, which has no per-wing decomposition, so they stay cumulative-only here
-# too), just built from component_fluxes_cumulativeEBV/
+# KK04_O32 diagnostics as component_out above (N2/[NII]/[OII] added afterward
+# for 'central' only, BPT stays cumulative-only), just built from
+# component_fluxes_cumulativeEBV/
 # component_flux_uncerts_cumulativeEBV, with a single per-source E(B-V) (not
 # per-wing) reported alongside every wing since that's the one value actually
 # applied to all of that source's components.
@@ -283,6 +319,7 @@ for src, wings in WING_NAMES.items():
                                oii3726_u, oii3729_u, oiii4959_u, oiii5007_u, hbeta_u)
         kR23_val, kR23_err = kewley_R23(oii3726_f, oiii4959_f, oiii5007_f, hbeta_f,
                                         oii3726_u, oiii4959_u, oiii5007_u, hbeta_u)
+        log_kR23_val, log_kR23_err = log_uncert(kR23_val, kR23_err)
         KD02_O32_val, KD02_O32_err = KD02_O32(oii3726_f, oii3729_f, oiii5007_f,
                                               oii3726_u, oii3729_u, oiii5007_u)
         log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
@@ -295,6 +332,8 @@ for src, wings in WING_NAMES.items():
             'R23_err': R23_err,
             'kk04_R23': kR23_val,
             'kk04_R23_err': kR23_err,
+            'log_kk04_R23': log_kR23_val,
+            'log_kk04_R23_err': log_kR23_err,
             'KD02_O32': KD02_O32_val,
             'KD02_O32_err': KD02_O32_err,
             'log_KD02_O32': log_KD02_O32_val,
@@ -310,6 +349,16 @@ for src, wings in WING_NAMES.items():
             'E(B-V)': EBV_cumulative['value'][src],
             'E(B-V)_err': EBV_cumulative['err'][src],
         }
+
+for src in ('A', 'B'):
+    idx_central = WING_NAMES[src].index('central')
+    add_central_N2_NII_OII(
+        component_out_cumulativeEBV[src],
+        Halpha['component_fluxes_cumulativeEBV'][src][idx_central],
+        Halpha['component_flux_uncerts_cumulativeEBV'][src][idx_central],
+        OII3726['component_fluxes_cumulativeEBV'][src][idx_central],
+        OII3726['component_flux_uncerts_cumulativeEBV'][src][idx_central],
+        NII6583['fluxes'][src], NII6583['flux_uncerts'][src])
 
 # ====================================
 # print all before and afters
@@ -439,10 +488,21 @@ def build_component_table(src, out):
         rows.append(dict(wing=wing,
                          R23=vals['R23'], R23_err=vals['R23_err'],
                          kk04_R23=vals['kk04_R23'], kk04_R23_err=vals['kk04_R23_err'],
+                         log_kk04_R23=vals['log_kk04_R23'], log_kk04_R23_err=vals['log_kk04_R23_err'],
                          KD02_O32=vals['KD02_O32'], KD02_O32_err=vals['KD02_O32_err'],
                          log_KD02_O32=vals['log_KD02_O32'], log_KD02_O32_err=vals['log_KD02_O32_err'],
                          KK04_O32=vals['KK04_O32'], KK04_O32_err=vals['KK04_O32_err'],
                          log_KK04_O32=vals['log_KK04_O32'], log_KK04_O32_err=vals['log_KK04_O32_err'],
+                         # only populated for the 'central' wing (see
+                         # add_central_N2_NII_OII) -- NaN elsewhere
+                         **{
+                             'N2': vals.get('N2', np.nan), 'N2_err': vals.get('N2_err', np.nan),
+                             'log_N2': vals.get('log_N2', np.nan), 'log_N2_err': vals.get('log_N2_err', np.nan),
+                             '[NII]/[OII]': vals.get('[NII]/[OII]', np.nan),
+                             '[NII]/[OII]_err': vals.get('[NII]/[OII]_err', np.nan),
+                             'log_NII_OII': vals.get('log_NII_OII', np.nan),
+                             'log_NII_OII_err': vals.get('log_NII_OII_err', np.nan),
+                         },
                          **{
                              # suffixed _observed: computed from observed,
                              # pre-dust-correction fluxes, unlike R23/kk04_R23

@@ -1,2 +1,2 @@
-wing,R23,R23_err,kk04_R23,kk04_R23_err,KD02_O32,KD02_O32_err,log_KD02_O32,log_KD02_O32_err,KK04_O32,KK04_O32_err,log_KK04_O32,log_KK04_O32_err,Halpha/Hbeta_observed,Halpha/Hbeta_observed_err,Hgamma/Hbeta_observed,Hgamma/Hbeta_observed_err,E(B-V),E(B-V)_err
-central,9.731,1.72,9.156,1.652,7.173,3.562,0.856,0.216,25.948,32.445,1.414,0.543,3.62,0.148,0.471,0.032,0.238,0.041
+wing,R23,R23_err,kk04_R23,kk04_R23_err,log_kk04_R23,log_kk04_R23_err,KD02_O32,KD02_O32_err,log_KD02_O32,log_KD02_O32_err,KK04_O32,KK04_O32_err,log_KK04_O32,log_KK04_O32_err,N2,N2_err,log_N2,log_N2_err,[NII]/[OII],[NII]/[OII]_err,log_NII_OII,log_NII_OII_err,Halpha/Hbeta_observed,Halpha/Hbeta_observed_err,Hgamma/Hbeta_observed,Hgamma/Hbeta_observed_err,E(B-V),E(B-V)_err
+central,9.731,1.72,9.156,1.652,0.962,0.078,7.173,3.562,0.856,0.216,25.948,32.445,1.414,0.543,0.025,0.007,-1.607,0.13,0.208,0.265,-0.682,0.554,3.62,0.148,0.471,0.032,0.238,0.041
