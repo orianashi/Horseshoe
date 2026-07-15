@@ -15,7 +15,15 @@ def _real_roots(coeffs_high_to_low, k0, target):
     real = np.sort(roots[np.abs(roots.imag) < 1e-6].real)
     return real
 
-# load in everything 
+# load in everything
+DIAGDIR = 'output/dust_corrected/dust_corrected_diagnostics'
+
+def load_pkl(path):
+    with open(path, 'rb') as f:
+        return dill.load(f)
+
+A = load_pkl(f'{DIAGDIR}/A_ratios_dust_corrected_cumulativeEBV.pkl')['cumulative']
+B = load_pkl(f'{DIAGDIR}/B_ratios_dust_corrected_cumulativeEBV.pkl')['cumulative']
 
 
 # ==================
@@ -44,32 +52,64 @@ def n2ha_q3_e8(n2ha, n2ha_err):
     return abundance, abundance_err
 
 # use the metallicity + O32 to constrain the ionization parameter using KD02's "improved version"
+# 0.1*Z_solar <=> 12 + log(O/H) =~ 7.9
+def z_tenthsolar_combined(KD02_o32, KD02_o32_err):
+    k0 = 7.46218
+    k1 = 0.685835
+    k2 = 0.0866086
+    q = 10**(k0+k1*KD02_o32+k2*KD02_o32**2)
+    # dq/d(o32) = q * ln(10) * (k1 + 2*k2*o32)
+    qerr = q * np.log(10) * np.abs(k1 + 2*k2*KD02_o32) * KD02_o32_err
+    return q, qerr
+
+# 0.2*Z_solar <=> 12 + log(O/H) =~ 8.2
+def z_fifthsolar_combined(KD02_o32, KD02_o32_err):
+    k0 = 7.57817
+    k1 = 0.739315
+    k2 = 0.0843640
+    q = 10**(k0+k1*KD02_o32+k2*KD02_o32**2)
+    qerr = q * np.log(10) * np.abs(k1 + 2*k2*KD02_o32) * KD02_o32_err
+    return q, qerr
+
 # 0.5*Z_solar <=> 12 + log(O/H) =~ 8.6
-def z_halfsolar_combined(o32, o32_err):
+def z_halfsolar_combined(KD02_o32, KD02_o32_err):
     k0 = 7.73013
     k1 = 0.843125
     k2 = 0.118166
-    q = 10**(k0+k1*o32+k2*o32**2)
-    qerr = 'placeholder'
+    q = 10**(k0+k1*KD02_o32+k2*KD02_o32**2)
+    # dq/d(o32) = q * ln(10) * (k1 + 2*k2*o32)
+    qerr = q * np.log(10) * np.abs(k1 + 2*k2*KD02_o32) * KD02_o32_err
     return q, qerr
 
-# use ionization parameter and correct R23 track to get the metallicity again 
-# here we are using the low-metallicity track 
-def r23_q1_e8_combined(r23, r23_err):
+# use ionization parameter and correct R23 track to get the metallicity again
+# here we are using the low-metallicity track
+# q = 8e7 cm/s
+def r23_q8_e7_combined(KK04_r23, KK04_r23_err):
+    k0 = -44.7026
+    k1 = 10.8052
+    k2 = -0.640113
+    disc = k1**2 - 4*k2*(k0-KK04_r23)
+    abundance = (-k1 + np.sqrt(disc)) / (2*k2)
+    abundance_err = np.abs(KK04_r23_err / np.sqrt(disc))
+    return abundance, abundance_err
+
+def r23_q1_e8_combined(KK04_r23, KK04_r23_err):
     k0 = -46.1589
     k1 = 11.2557
     k2 = -0.672731
-    abundance = (-k1 + np.sqrt(k1**2 - 4*k2*(k0-r23))) / (2*k2)
-    abundance_err = 'placeholder'
+    disc = k1**2 - 4*k2*(k0-KK04_r23)
+    abundance = (-k1 + np.sqrt(disc)) / (2*k2)
+    # d(abundance)/d(r23) = 1/sqrt(disc), from d(disc)/d(r23) = 4*k2
+    abundance_err = np.abs(KK04_r23_err / np.sqrt(disc))
     return abundance, abundance_err
 
-def r23_q3_e8_combined(r23, r23_err):
+def r23_q3_e8_combined(KK04_r23, KK04_r23_err):
     k0 = -45.6075
     k1 = 11.2074
     k2 = -0.674460
-    sqrt = k1**2 - 4*k2*(k0-r23)
-    abundance = (-k1 + np.sqrt(sqrt)) / (2*k2)
-    abundance_err = 'placeholder'
+    disc = k1**2 - 4*k2*(k0-KK04_r23)
+    abundance = (-k1 + np.sqrt(disc)) / (2*k2)
+    abundance_err = np.abs(KK04_r23_err / np.sqrt(disc))
     return abundance, abundance_err
 
 # if the metallicity has changed significantly, go to metallicity + O32 to get the ionization parameter again 
@@ -79,46 +119,84 @@ def r23_q3_e8_combined(r23, r23_err):
 # KD02 PROCESS FOR METALLICITIES ABOVE 8.6 
 # ==================
 # step 1 of KD02 optimized abundance determination
-def n2o2_combined(n2o2,n2o2_err):
-    abundance = np.log10(1.54020+1.26602*n2o2+0.167977*n2o2**2) + 8.93
-    abundance_err = 'placeholder'
+def n2o2_combined(n2o2,n2o2_err): #this only sensitive for above >8.6 
+    u = 1.54020+1.26602*n2o2+0.167977*n2o2**2
+    abundance = np.log10(u) + 8.93
+    # d(abundance)/d(n2o2) = 0.434/u * du/d(n2o2)
+    abundance_err = 0.434/u * np.abs(1.26602 + 2*0.167977*n2o2) * n2o2_err
     return abundance, abundance_err
 
 # step 2a - if step 1 has abundance >8.6, use kd02_O32 ionization diagnostic 
-def high_metallicity_q_halfsolar(o32, o32_err):
+def high_metallicity_q_halfsolar(KD02_o32, KD02_o32_err):
     k0 = -81.1880
     k1=27.5082
     k2 = -3.19126
     k3 = 0.128252
-    q = _real_roots([k3, k2, k1, k0], k0, o32)
+    q = _real_roots([k3, k2, k1, k0], k0, KD02_o32)
     q_err = "placeholder"
     return q, q_err
 
+def high_metallicity_q_solar(KD02_o32, KD02_o32_err):
+    k0 = -52.6367
+    k1 = 16.0880
+    k2 = -1.67443
+    k3 = 0.0608004
+    q = _real_roots([k3, k2, k1, k0], k0, KD02_o32)
+    q_err = "placeholder"
+    return q, q_err   
 
 # step 2B - if step 1 has abundance <8.6, do the average of Z94 and M91(upper) using kk04_o32 
-def z94_m91(r23, r23_err, kk04_o32, kk04_o32_err):
-    abundance_z94 = 9.265 - 0.33*r23 - 0.202*r23**2 - 0.207*r23**3 - 0.333*r23**4
-    abundance_m91u = 12 - 4.944 + 0.767*r23 + 0.602*r23**2 - kk04_o32 * (0.29 + 0.332*r23-0.331*r23**2)
-    avg = (abundance_m91u + abundance_z94)/2 
-    avg_err = 'placeholder'
+def z94_m91(KK04_r23, KK04_r23_err, kk04_o32, kk04_o32_err):
+    abundance_z94 = 9.265 - 0.33*KK04_r23 - 0.202*KK04_r23**2 - 0.207*KK04_r23**3 - 0.333*KK04_r23**4
+    abundance_m91u = 12 - 4.944 + 0.767*KK04_r23 + 0.602*KK04_r23**2 - kk04_o32 * (0.29 + 0.332*KK04_r23-0.331*KK04_r23**2)
+    avg = (abundance_m91u + abundance_z94)/2
+
+    d_z94_dr23 = -0.33 - 2*0.202*KK04_r23 - 3*0.207*KK04_r23**2 - 4*0.333*KK04_r23**3
+    z94_err = np.abs(d_z94_dr23) * KK04_r23_err
+
+    d_m91u_dr23 = 0.767 + 2*0.602*KK04_r23 - kk04_o32 * (0.332 - 2*0.331*KK04_r23)
+    d_m91u_do32 = -(0.29 + 0.332*KK04_r23 - 0.331*KK04_r23**2)
+    m91u_err = np.sqrt((d_m91u_dr23 * KK04_r23_err)**2 + (d_m91u_do32 * kk04_o32_err)**2)
+
+    avg_err = np.sqrt(z94_err**2 + m91u_err**2) / 2
     return avg, avg_err
 
 # step 3b - if step 2 produces estimate velow 8.5, use R23 method 
 
-# SOURCE B 
-n2ha_q1_e8(-2.066, 'placeholder')[0] #7.99
-z_halfsolar_combined(0.53, 'placeholder')[0] #1.6e8 
-r23_q1_e8_combined(0.838, 'placeholder')[0] #8.011.
+# SOURCE B
+# ITERATION 1
+abundance_B_initialguess = n2ha_q1_e8(B['log_N2'], B['log_N2_err'])[0] #7.99
+qb_tenthsolar, qb_tenthsolar_unc = z_tenthsolar_combined(B['log_KD02_O32'], B['log_KD02_O32_err']) #q=7.1e7
+abundance_B_q8e7, abundance_B_q8e7_unc = r23_q8_e7_combined(B['log_kk04_R23'], B['log_kk04_R23_err']) #8.14+-0.52
+#is now much closer to 0.2Z_solar (8.2) than 0.1Z_solar (7.9), therefore re-evaluate 
+
+#ITERATION 2 
+qb_fifthsolar, qb_fifthsolar_unc = z_fifthsolar_combined(B['log_KD02_O32'], B['log_KD02_O32_err']) #q=9.9e7 
+abundance_B_qe8, abundance_B_qe8_unc = r23_q1_e8_combined(B['log_kk04_R23'], B['log_kk04_R23_err']) #8.011 +- 0.42
+#8.01 is now closer to 0.1Z_solar again... so the real value of 12_log(O/H) is probably something in between 8.14 and 8.01 
+
+#FINAL
+#take the average of the 12+log(O/H) calculated from q=8e7 and q=1e8 and 0.2Z_solar from R23
+abundance_B = (abundance_B_q8e7 + abundance_B_qe8)/2
+abundance_B_unc = 0.5*np.sqrt(abundance_B_qe8_unc**2 + abundance_B_q8e7_unc**2)
+#take the average of the log(q) calculated from 0.1Z_solar and 0.2Z_solar and O32
+q_B = (qb_fifthsolar + qb_tenthsolar)/2
+q_B_unc = 0.5*np.sqrt(qb_fifthsolar_unc**2 + qb_tenthsolar_unc**2)
+
+print(f"12+log(O/H) = {abundance_B:.3f} +- {abundance_B_unc:.3f}")
+print(f"log(q) = {np.log10(q_B):.3f} +-  {np.log10(q_B_unc):.3f}")
+
 
 # SOURCE A
 # using the low-metallicity process
-n2ha_q3_e8(-1.657, 'placeholder')[0]  #8.54 
-z_halfsolar_combined(0.953, 'placeholder')[0] #4.3e8
-r23_q3_e8_combined(0.961, 'placeholder')[0] # HERE IS WHERE THERE IS A NAN 
-# also, abundanced in 8.5 - 8.9 region can't be reliably determined with R23 
+n2ha_q3_e8(A['log_N2'], A['log_N2_err'])[0]  #8.54
+z_halfsolar_combined(A['log_KD02_O32'], A['log_KD02_O32_err'])[0] #4.3e8
+r23_q3_e8_combined(A['log_kk04_R23'], A['log_kk04_R23_err'])[0] # HERE IS WHERE THERE IS A NAN
+# also, abundanced in 8.5 - 8.9 region can't be reliably determined with R23
 
-#using the high-metallicity process 
-n2o2_combined(-0.638, 'placeholder')[0] # 8.83 
-high_metallicity_q_halfsolar(0.953, 'placeholder')[0] #log(q) = 8.62 =~ 4e8
+#using the high-metallicity process
+n2o2_combined(A['log_NII_OII'], A['log_NII_OII_err'])[0] # 8.83
+high_metallicity_q_solar(A['log_KD02_O32'], A['log_KD02_O32_err'])[0] #log(q)=9.14
 # the [NII]/[OII] diagnostic is only valid for ionization parameters between 5e6 and 3e8 
 # HeII1640 emission present for Source A, indicates hard ionizing radiation field ?
+
