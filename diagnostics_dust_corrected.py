@@ -23,6 +23,25 @@ WING_NAMES = {
     'B': ['red_wing', 'central', 'blue_wing'],
 }
 
+# physical_values_A.csv / physical_values_B.csv are shared with btfr.py and
+# metallicity.py, each owning a different subset of quantities --
+# upsert-by-quantity-name so re-running any one script updates only its own
+# rows and leaves the others' rows intact, regardless of order.
+def write_physical_values(source, rows):
+    path = f'./output/physical_values_{source}.csv'
+    new_df = pd.DataFrame(rows)
+    try:
+        # skipinitialspace + strip: some editor/linter re-aligns this file
+        # with padding spaces around each field (incl. before quoted fields,
+        # which otherwise breaks the default C parser's quote detection)
+        existing = pd.read_csv(path, skipinitialspace=True)
+        existing.columns = existing.columns.str.strip()
+        existing['quantity'] = existing['quantity'].astype(str).str.strip()
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        existing = pd.DataFrame(columns=['quantity', 'value', 'uncertainty', 'notes'])
+    existing = existing[~existing['quantity'].isin(new_df['quantity'])]
+    pd.concat([existing, new_df], ignore_index=True).to_csv(path, index=False)
+
 
 # =======
 # un-pikl: dust-corrected fluxes (see dust_extinction.py)
@@ -301,6 +320,26 @@ for src in ('A', 'B'):
         OII3726['component_fluxes'][src][idx_central], OII3726['component_flux_uncerts'][src][idx_central],
         NII6583['fluxes'][src], NII6583['flux_uncerts'][src])
 
+# Source A's [OII] doublet is a single un-split Gaussian (no red_wing entry
+# in OII3726['component_fluxes']['A']), so the wing loop above skips 'A'
+# 'red_wing' entirely via its IndexError guard -- but Halpha/Hbeta and
+# Hgamma/Hbeta themselves DO have a red_wing component (see
+# dust_extinction.py's balmer_decrement_component/EBV_component), so add
+# that wing back in with just the Balmer-decrement fields; R23/KD02_O32/
+# KK04_O32 stay genuinely absent (build_component_table fills them with NaN).
+def add_balmer_only_wing(component_dict, src, wing, ebv_value, ebv_err):
+    component_dict[src][wing] = {
+        'Halpha/Hbeta': balmer_decrement_component['Halpha/Hbeta'][src][wing],
+        'Halpha/Hbeta_err': balmer_decrement_component['Halpha/Hbeta_err'][src][wing],
+        'Hgamma/Hbeta': balmer_decrement_component['Hgamma/Hbeta'][src][wing],
+        'Hgamma/Hbeta_err': balmer_decrement_component['Hgamma/Hbeta_err'][src][wing],
+        'E(B-V)': ebv_value,
+        'E(B-V)_err': ebv_err,
+    }
+
+add_balmer_only_wing(component_out, 'A', 'red_wing',
+                     EBV_component['value']['A']['red_wing'], EBV_component['err']['A']['red_wing'])
+
 # ====================================
 # component-wise, per source per wing, using the CUMULATIVE E(B-V) applied to
 # each component's flux (see dust_extinction.py's component_results_cumulativeEBV)
@@ -373,6 +412,13 @@ for src in ('A', 'B'):
         OII3726['component_fluxes_cumulativeEBV'][src][idx_central],
         OII3726['component_flux_uncerts_cumulativeEBV'][src][idx_central],
         NII6583['fluxes'][src], NII6583['flux_uncerts'][src])
+
+# same fix as component_out above, for the cumulative-E(B-V) variant --
+# every wing here shares the source's single cumulative E(B-V), so A's
+# red_wing gets that same value (matching how every other wing/source is
+# handled in this variant), not its own per-wing E(B-V).
+add_balmer_only_wing(component_out_cumulativeEBV, 'A', 'red_wing',
+                     EBV_cumulative['value']['A'], EBV_cumulative['err']['A'])
 
 # ====================================
 # print all before and afters
@@ -501,13 +547,19 @@ def build_component_table(src, out):
             continue
         vals = out[src][wing]
         rows.append(dict(wing=wing,
-                         R23=vals['R23'], R23_err=vals['R23_err'],
-                         kk04_R23=vals['kk04_R23'], kk04_R23_err=vals['kk04_R23_err'],
-                         log_kk04_R23=vals['log_kk04_R23'], log_kk04_R23_err=vals['log_kk04_R23_err'],
-                         KD02_O32=vals['KD02_O32'], KD02_O32_err=vals['KD02_O32_err'],
-                         log_KD02_O32=vals['log_KD02_O32'], log_KD02_O32_err=vals['log_KD02_O32_err'],
-                         KK04_O32=vals['KK04_O32'], KK04_O32_err=vals['KK04_O32_err'],
-                         log_KK04_O32=vals['log_KK04_O32'], log_KK04_O32_err=vals['log_KK04_O32_err'],
+                         # R23/KD02_O32/KK04_O32 need [OII], which for source
+                         # A is a single un-split Gaussian (no red_wing
+                         # entry) -- absent (NaN) for wings without it, e.g.
+                         # A's red_wing (see add_balmer_only_wing below)
+                         **{
+                             'R23': vals.get('R23', np.nan), 'R23_err': vals.get('R23_err', np.nan),
+                             'kk04_R23': vals.get('kk04_R23', np.nan), 'kk04_R23_err': vals.get('kk04_R23_err', np.nan),
+                             'log_kk04_R23': vals.get('log_kk04_R23', np.nan), 'log_kk04_R23_err': vals.get('log_kk04_R23_err', np.nan),
+                             'KD02_O32': vals.get('KD02_O32', np.nan), 'KD02_O32_err': vals.get('KD02_O32_err', np.nan),
+                             'log_KD02_O32': vals.get('log_KD02_O32', np.nan), 'log_KD02_O32_err': vals.get('log_KD02_O32_err', np.nan),
+                             'KK04_O32': vals.get('KK04_O32', np.nan), 'KK04_O32_err': vals.get('KK04_O32_err', np.nan),
+                             'log_KK04_O32': vals.get('log_KK04_O32', np.nan), 'log_KK04_O32_err': vals.get('log_KK04_O32_err', np.nan),
+                         },
                          # only populated for the 'central' wing (see
                          # add_central_N2_NII_OII) -- NaN elsewhere
                          **{
@@ -583,3 +635,28 @@ with open(f'{DIAGDIR}/A_ratios_dust_corrected_cumulativeEBV.pkl', 'wb') as fA:
     dill.dump({'cumulative': cumulative_A, 'component': component_out_cumulativeEBV['A']}, fA)
 with open(f'{DIAGDIR}/B_ratios_dust_corrected_cumulativeEBV.pkl', 'wb') as fB:
     dill.dump({'cumulative': cumulative_B, 'component': component_out_cumulativeEBV['B']}, fB)
+
+# ====================================
+# Balmer decrements (componentwise + cumulative) and cumulative E(B-V), both
+# sources -- Halpha/Hbeta and Hgamma/Hbeta are always computed from observed,
+# pre-dust-correction fluxes (identical between the componentEBV/
+# cumulativeEBV variants), so component_out_cumulativeEBV is as good a source
+# for them as component_out; cumulativeEBV is used here for consistency with
+# metallicity.py, which loads that same variant.
+# ====================================
+for src in ('A', 'B'):
+    cumulative = cumulative_out[src]
+    rows = [
+        dict(quantity='Halpha/Hbeta_cumulative', value=cumulative['Halpha/Hbeta'],
+             uncertainty=cumulative['Halpha/Hbeta_err'], notes='observed, pre-dust-correction fluxes'),
+        dict(quantity='Hgamma/Hbeta_cumulative', value=cumulative['Hgamma/Hbeta'],
+             uncertainty=cumulative['Hgamma/Hbeta_err'], notes='observed, pre-dust-correction fluxes'),
+    ]
+    for wing, vals in component_out_cumulativeEBV[src].items():
+        rows.append(dict(quantity=f'Halpha/Hbeta_{wing}', value=vals['Halpha/Hbeta'],
+                         uncertainty=vals['Halpha/Hbeta_err'], notes=f'{wing} component, observed fluxes'))
+        rows.append(dict(quantity=f'Hgamma/Hbeta_{wing}', value=vals['Hgamma/Hbeta'],
+                         uncertainty=vals['Hgamma/Hbeta_err'], notes=f'{wing} component, observed fluxes'))
+    rows.append(dict(quantity='E(B-V)_cumulative', value=cumulative['E(B-V)'],
+                     uncertainty=cumulative['E(B-V)_err'], notes='derived from cumulative Halpha/Hbeta decrement'))
+    write_physical_values(src, rows)

@@ -1,0 +1,11 @@
+quantity,value,uncertainty,notes
+Halpha/Hbeta_cumulative,3.5365841037054326,0.1235315343216857,"observed, pre-dust-correction fluxes"
+Hgamma/Hbeta_cumulative,0.4654239004286564,0.027154616641834,"observed, pre-dust-correction fluxes"
+Halpha/Hbeta_central,3.6195668750373047,0.1482067199300734,"central component, observed fluxes"
+Hgamma/Hbeta_central,0.4711625047508468,0.0317373396928786,"central component, observed fluxes"
+Halpha/Hbeta_red_wing,3.142674426456353,0.5527174008600265,"red_wing component, observed fluxes"
+Hgamma/Hbeta_red_wing,0.4381834053218612,0.129258947606518,"red_wing component, observed fluxes"
+E(B-V)_cumulative,0.2147001814699562,0.0353179160101265,derived from cumulative Halpha/Hbeta decrement
+abundance_cumulative_12log(O/H),8.833818223740412,0.3174775671874016,KD02 [NII]/[OII] method
+log_M_btfr6_26_corrected_edgeon,8.523131795996685,0.23547133747096502,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
+log_M_btfr6_26_corrected_45deg,9.08756303786665,0.23547133747096502,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"

@@ -15,6 +15,25 @@ def _real_roots(coeffs_high_to_low, k0, target):
     real = np.sort(roots[np.abs(roots.imag) < 1e-6].real)
     return real
 
+# physical_values_A.csv / physical_values_B.csv are shared with btfr.py and
+# diagnostics_dust_corrected.py, each owning a different subset of
+# quantities -- upsert-by-quantity-name so re-running any one script updates
+# only its own rows and leaves the others' rows intact, regardless of order.
+def write_physical_values(source, rows):
+    path = f'./output/physical_values_{source}.csv'
+    new_df = pd.DataFrame(rows)
+    try:
+        # skipinitialspace + strip: some editor/linter re-aligns this file
+        # with padding spaces around each field (incl. before quoted fields,
+        # which otherwise breaks the default C parser's quote detection)
+        existing = pd.read_csv(path, skipinitialspace=True)
+        existing.columns = existing.columns.str.strip()
+        existing['quantity'] = existing['quantity'].astype(str).str.strip()
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        existing = pd.DataFrame(columns=['quantity', 'value', 'uncertainty', 'notes'])
+    existing = existing[~existing['quantity'].isin(new_df['quantity'])]
+    pd.concat([existing, new_df], ignore_index=True).to_csv(path, index=False)
+
 # load in everything
 DIAGDIR = 'output/dust_corrected/dust_corrected_diagnostics'
 
@@ -255,8 +274,18 @@ kk04_q_A, kk04_q_A_unc = kk04_q(abundance_A, abundance_A_unc, A['log_KK04_O32'],
 # FINAL
 print(f"Source A 12+log(O/H): {abundance_A:.5f} +- {abundance_A_unc:.5f}")
 
+write_physical_values('A', [
+    dict(quantity='abundance_cumulative_12log(O/H)', value=abundance_A, uncertainty=abundance_A_unc,
+         notes='KD02 [NII]/[OII] method'),
+])
+write_physical_values('B', [
+    dict(quantity='abundance_cumulative_12log(O/H)', value=abundance_B, uncertainty=abundance_B_unc,
+         notes='KD02 R23 branch-averaged method'),
+    dict(quantity='log_q', value=log_q_B, uncertainty=log_q_B_unc, notes='KD02/KK04 ionization parameter'),
+])
+
 # ========================
-# Calculate galaxy component metallicity  
+# Calculate galaxy component metallicity
 # ========================
 # SOURCE B
 # ITERATION 1

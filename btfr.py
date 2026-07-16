@@ -11,6 +11,29 @@ z_A = 1.679
 z_B = 1.677
 
 # ====================
+# Shared physical_values_A.csv / physical_values_B.csv are written to by
+# several independent scripts (this one, metallicity.py,
+# diagnostics_dust_corrected.py), each owning a different subset of
+# quantities -- upsert-by-quantity-name so re-running any one script updates
+# only its own rows and leaves the others' rows (written by other scripts)
+# intact, regardless of run order.
+# ====================
+def write_physical_values(source, rows):
+    path = f'./output/physical_values_{source}.csv'
+    new_df = pd.DataFrame(rows)
+    try:
+        # skipinitialspace + strip: some editor/linter re-aligns this file
+        # with padding spaces around each field (incl. before quoted fields,
+        # which otherwise breaks the default C parser's quote detection)
+        existing = pd.read_csv(path, skipinitialspace=True)
+        existing.columns = existing.columns.str.strip()
+        existing['quantity'] = existing['quantity'].astype(str).str.strip()
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        existing = pd.DataFrame(columns=['quantity', 'value', 'uncertainty', 'notes'])
+    existing = existing[~existing['quantity'].isin(new_df['quantity'])]
+    pd.concat([existing, new_df], ignore_index=True).to_csv(path, index=False)
+
+# ====================
 # Load in Gauss parameters for dust-corrected central components of A and B
 # ====================
 # mean/stddev are kinematic fit outputs (dust correction only rescales flux,
@@ -173,3 +196,92 @@ log_M_A_raw_45deg, log_M_A_raw_unc_45deg = btfr_6_26(v_c_A_raw_45deg, v_c_A_raw_
 v_c_B_raw_45deg, v_c_B_raw_45deg_unc = V_c(w20_kms_B_raw, w20_kms_B_raw_unc, i_45, i_unc)
 log_M_B_raw_45deg, log_M_B_raw_unc_45deg = btfr_6_26(v_c_B_raw_45deg, v_c_B_raw_45deg_unc)
 
+# with instrumental broadening correction
+v_c_A_corr_45deg, v_c_A_corr_45deg_unc = V_c(w20_kms_A_corr, w20_kms_A_corr_unc, i_45, i_unc)
+log_M_A_corr_45deg, log_M_A_corr_unc_45deg = btfr_6_26(v_c_A_corr_45deg, v_c_A_corr_45deg_unc)
+
+v_c_B_corr_45deg, v_c_B_corr_45deg_unc = V_c(w20_kms_B_corr, w20_kms_B_corr_unc, i_45, i_unc)
+log_M_B_corr_45deg, log_M_B_corr_unc_45deg = btfr_6_26(v_c_B_corr_45deg, v_c_B_corr_45deg_unc)
+
+write_physical_values('A', [
+    dict(quantity='log_M_btfr6_26_corrected_edgeon', value=log_M_A_corr, uncertainty=log_M_A_corr_unc,
+         notes='Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)'),
+    dict(quantity='log_M_btfr6_26_corrected_45deg', value=log_M_A_corr_45deg, uncertainty=log_M_A_corr_unc_45deg,
+         notes='Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg'),
+])
+write_physical_values('B', [
+    dict(quantity='log_M_btfr6_26_corrected_edgeon', value=log_M_B_corr, uncertainty=log_M_B_corr_unc,
+         notes='Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)'),
+    dict(quantity='log_M_btfr6_26_corrected_45deg', value=log_M_B_corr_45deg, uncertainty=log_M_B_corr_unc_45deg,
+         notes='Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg'),
+])
+
+# ====================
+# Mass-Metallicity Relation
+# ====================
+def k18_MZ(mass, mass_unc): # uses calibration from KD02
+    a=28.0974
+    b=-7.23631
+    c=0.850344
+    d=-0.0318315
+    scatter = 0.1
+    z = a + b*mass + c*mass**2 + d*mass**3
+    # a/b/c/d are a fixed calibration (no quoted uncertainty) -- only mass
+    # propagates, via the cubic's derivative, combined in quadrature with
+    # the relation's own intrinsic scatter
+    dz_dmass = b + 2*c*mass + 3*d*mass**2
+    z_unc = np.sqrt((dz_dmass*mass_unc)**2 + scatter**2)
+    return z, z_unc
+
+# Zahid et al. 2014 eq. 6, COSMOS z~1.55 fit (Table 2, row 2):
+# 12+log(O/H) = Zo - log10[1 + (M*/Mo)^-gamma]. log_mass is log10(M*/Msun);
+# Mo is a characteristic turnover mass in the SAME (linear solar-mass) units
+# as M*, so the ratio M*/Mo = 10**(log_mass - log_Mo) -- feeding log_mass
+# straight in as if it were the ratio itself (the original bug) skips both
+# the exponentiation and the Mo normalization entirely.
+def cosmos_MZ(log_mass, log_mass_unc):
+    Zo = 8.740
+    Zo_unc = 0.042
+    log_Mo = 9.93
+    log_Mo_unc = 0.09
+    gamma = 0.88
+    gamma_unc = 0.18
+
+    D = log_mass - log_Mo
+    x = 10**(-gamma * D)  # (M*/Mo)^-gamma
+    z = Zo - np.log10(1 + x)
+
+    # d(z)/d(log_mass) = -d(z)/d(log_Mo) = gamma*x/(1+x) (the ln10 factors
+    # from d(x)/dD and d(log10)/dx cancel exactly); d(z)/d(gamma) = D*x/(1+x).
+    # log_mass_unc and log_Mo_unc are independent uncertainties, so even
+    # though their derivatives have equal magnitude they add in quadrature
+    # separately, not as a difference.
+    common = gamma * x / (1 + x)
+    dz_dgamma = D * x / (1 + x)
+    z_unc = np.sqrt(Zo_unc**2 + (common*log_mass_unc)**2 + (common*log_Mo_unc)**2 +
+                    (dz_dgamma*gamma_unc)**2)
+    return z, z_unc
+
+
+z_A_k18_raw, z_A_k18_raw_unc = k18_MZ(log_M_A_raw, log_M_A_raw_unc)
+z_A_cosmos_raw, z_A_cosmos_raw_unc = cosmos_MZ(log_M_A_raw, log_M_A_raw_unc)
+
+z_A_k18_45deg, z_A_k18_45deg_unc = k18_MZ(log_M_A_raw_45deg, log_M_A_raw_unc_45deg)
+z_A_cosmos_45deg, z_A_cosmos_45deg_unc = cosmos_MZ(log_M_A_raw_45deg, log_M_A_raw_unc_45deg)
+
+z_B_k18_raw, z_B_k18_raw_unc = k18_MZ(log_M_B_raw, log_M_B_raw_unc)
+z_B_cosmos_raw, z_B_cosmos_raw_unc = cosmos_MZ(log_M_B_raw, log_M_B_raw_unc)
+
+z_B_k18_45deg, z_B_k18_45deg_unc = k18_MZ(log_M_B_raw_45deg, log_M_B_raw_unc_45deg)
+z_B_cosmos_45deg, z_B_cosmos_45deg_unc = cosmos_MZ(log_M_B_raw_45deg, log_M_B_raw_unc_45deg)
+
+print()
+print("Mass-metallicity relation (12+log(O/H)), from uncorrected-broadening BTFR mass:")
+print(f"Source A, edge-on:  k18 = {z_A_k18_raw:.3f} +/- {z_A_k18_raw_unc:.3f}   "
+      f"cosmos = {z_A_cosmos_raw:.3f} +/- {z_A_cosmos_raw_unc:.3f}")
+print(f"Source A, 45 deg:   k18 = {z_A_k18_45deg:.3f} +/- {z_A_k18_45deg_unc:.3f}   "
+      f"cosmos = {z_A_cosmos_45deg:.3f} +/- {z_A_cosmos_45deg_unc:.3f}")
+print(f"Source B, edge-on:  k18 = {z_B_k18_raw:.3f} +/- {z_B_k18_raw_unc:.3f}   "
+      f"cosmos = {z_B_cosmos_raw:.3f} +/- {z_B_cosmos_raw_unc:.3f}")
+print(f"Source B, 45 deg:   k18 = {z_B_k18_45deg:.3f} +/- {z_B_k18_45deg_unc:.3f}   "
+      f"cosmos = {z_B_cosmos_45deg:.3f} +/- {z_B_cosmos_45deg_unc:.3f}")
