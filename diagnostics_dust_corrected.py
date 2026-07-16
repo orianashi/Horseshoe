@@ -112,6 +112,15 @@ def KK04_O32(oii3726, oiii4959, oiii5007, oii3726unc, oiii4959unc, oiii5007unc):
     return ratios(num, oii3726, num_unc, oii3726unc)
 
 
+# Pettini & Pagel (2004) eq. 1: 12 + log(O/H) = 8.90 + 0.57 * N2, where
+# N2 = log([NII]6583/Halpha) -- linear in log_N2, so the uncertainty
+# propagates as 0.57 * log_N2_err
+def pp04_N2_metallicity(log_N2, log_N2_err):
+    metallicity = 8.90 + 0.57 * log_N2
+    metallicity_err = 0.57 * log_N2_err
+    return metallicity, metallicity_err
+
+
 def bpt_line(log_NIIalpha, z):
     denom = (log_NIIalpha - 0.02 - 0.1833 * z)
     return 0.61 / denom + 1.2 + 0.03 * z
@@ -132,11 +141,13 @@ def add_central_N2_NII_OII(component_dict, halpha_f, halpha_u, oii3726_f, oii372
     NII_OII_val, NII_OII_err = ratios(nii_f, oii3726_f, nii_u, oii3726_u)
     log_N2_val, log_N2_err = log_uncert(N2_val, N2_err)
     log_NII_OII_val, log_NII_OII_err = log_uncert(NII_OII_val, NII_OII_err)
+    metallicity_N2_val, metallicity_N2_err = pp04_N2_metallicity(log_N2_val, log_N2_err)
     component_dict['central'].update({
         'N2': N2_val, 'N2_err': N2_err,
         'log_N2': log_N2_val, 'log_N2_err': log_N2_err,
         '[NII]/[OII]': NII_OII_val, '[NII]/[OII]_err': NII_OII_err,
         'log_NII_OII': log_NII_OII_val, 'log_NII_OII_err': log_NII_OII_err,
+        '12+log(O/H)_N2': metallicity_N2_val, '12+log(O/H)_N2_err': metallicity_N2_err,
     })
 
 
@@ -175,6 +186,7 @@ for src in ('A', 'B'):
     log_kR23, log_kR23_err = log_uncert(kR23_val, kR23_err)
     log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
     log_KK04_O32_val, log_KK04_O32_err = log_uncert(KK04_O32_val, KK04_O32_err)
+    metallicity_N2, metallicity_N2_err = pp04_N2_metallicity(log_N2, log_N2_err)
 
     logs[src] = {
         'log_N2': log_N2,
@@ -188,6 +200,8 @@ for src in ('A', 'B'):
         'N2_err': N2_err,
         'log_N2': log_N2,
         'log_N2_err': log_N2_err,
+        '12+log(O/H)_N2': metallicity_N2,
+        '12+log(O/H)_N2_err': metallicity_N2_err,
         '[OIII]/Hbeta': OIIIbeta,
         '[OIII]/Hbeta_err': OIIIbeta_err,
         '[NII]/[OII]': NII_OII,
@@ -367,7 +381,7 @@ print("=" * 60)
 print("Cumulative diagnostics (dust-corrected)")
 print("NOTE: Halpha/Hbeta, Hgamma/Hbeta, and E(B-V) below are computed from")
 print("observed, pre-dust-correction fluxes (see dust_extinction.py) -- only")
-print("N2, [OIII]/Hbeta, R23, kk04_R23, KD02_O32, and KK04_O32 use dust-corrected fluxes.")
+print("N2, 12+log(O/H)_N2, [OIII]/Hbeta, R23, kk04_R23, KD02_O32, and KK04_O32 use dust-corrected fluxes.")
 print("=" * 60)
 for src in ('A', 'B'):
     print(f"Source {src}:")
@@ -451,9 +465,10 @@ plt.show()
 # csv tables
 # ====================================
 CUMULATIVE_KEYS = [
-    'N2', 'log_N2', '[OIII]/Hbeta', '[NII]/[OII]', 'log_NII_OII', 'R23',
-    'kk04_R23', 'log_kk04_R23', 'KD02_O32', 'log_KD02_O32', 'KK04_O32',
-    'log_KK04_O32', 'Halpha/Hbeta', 'Hgamma/Hbeta', 'E(B-V)'
+    'N2', 'log_N2', '12+log(O/H)_N2', '[OIII]/Hbeta', '[NII]/[OII]',
+    'log_NII_OII', 'R23', 'kk04_R23', 'log_kk04_R23', 'KD02_O32',
+    'log_KD02_O32', 'KK04_O32', 'log_KK04_O32', 'Halpha/Hbeta',
+    'Hgamma/Hbeta', 'E(B-V)'
 ]
 
 # Halpha/Hbeta, Hgamma/Hbeta, and E(B-V) are computed from observed,
@@ -498,6 +513,8 @@ def build_component_table(src, out):
                          **{
                              'N2': vals.get('N2', np.nan), 'N2_err': vals.get('N2_err', np.nan),
                              'log_N2': vals.get('log_N2', np.nan), 'log_N2_err': vals.get('log_N2_err', np.nan),
+                             '12+log(O/H)_N2': vals.get('12+log(O/H)_N2', np.nan),
+                             '12+log(O/H)_N2_err': vals.get('12+log(O/H)_N2_err', np.nan),
                              '[NII]/[OII]': vals.get('[NII]/[OII]', np.nan),
                              '[NII]/[OII]_err': vals.get('[NII]/[OII]_err', np.nan),
                              'log_NII_OII': vals.get('log_NII_OII', np.nan),

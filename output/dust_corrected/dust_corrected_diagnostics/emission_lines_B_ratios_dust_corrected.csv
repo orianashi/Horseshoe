@@ -1,6 +1,7 @@
 ratio,value,uncert,notes
 N2,0.009,0.007,
 log_N2,-2.066,0.33,
+12+log(O/H)_N2,7.723,0.188,
 [OIII]/Hbeta,4.771,2.46,
 [NII]/[OII],0.046,0.04,
 log_NII_OII,-1.334,0.375,
