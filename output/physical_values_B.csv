@@ -1,12 +1,14 @@
 quantity,value,uncertainty,notes
-Halpha/Hbeta_cumulative,3.237961146932927,0.3496656211030058,"observed, pre-dust-correction fluxes"
-Hgamma/Hbeta_cumulative,0.5615738256544998,0.0947676059354735,"observed, pre-dust-correction fluxes"
+log_M_btfr6_26_corrected_edgeon,8.620356660762642,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
+log_M_btfr6_26_corrected_45deg,9.184787902632609,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"
+abundance_cumulative_12log(O/H),8.076449000641297,0.3398020838933056,KD02 R23 branch-averaged method
+log_q,7.92767719804795,0.1588810234306853,KD02/KK04 ionization parameter
+Halpha/Hbeta_cumulative,3.237961146932927,0.34966562110300586,"observed, pre-dust-correction fluxes"
+Hgamma/Hbeta_cumulative,0.5615738256544998,0.09476760593547355,"observed, pre-dust-correction fluxes"
 Halpha/Hbeta_red_wing,3.320065578054366,3.802691076550725,"red_wing component, observed fluxes"
 Hgamma/Hbeta_red_wing,0.5471379842494039,0.6880221663425726,"red_wing component, observed fluxes"
 Halpha/Hbeta_central,2.9807950111453896,1.4504372535503396,"central component, observed fluxes"
-Hgamma/Hbeta_central,0.5290268278051119,0.259000524303535,"central component, observed fluxes"
-E(B-V)_cumulative,0.1255020437925826,0.1091899145087722,derived from cumulative Halpha/Hbeta decrement
-abundance_cumulative_12log(O/H),8.076449000641297,0.3398020838933056,KD02 R23 branch-averaged method
-log_q,7.92767719804795,0.1588810234306853,KD02/KK04 ionization parameter
-log_M_btfr6_26_corrected_edgeon,8.620356660762642,0.25073873343415576,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
-log_M_btfr6_26_corrected_45deg,9.184787902632607,0.25073873343415576,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"
+Hgamma/Hbeta_central,0.5290268278051119,0.25900052430353504,"central component, observed fluxes"
+Halpha/Hbeta_blue_wing,5.231379884187265,2.6874602133922196,"blue_wing component, observed fluxes"
+Hgamma/Hbeta_blue_wing,0.918286783241868,0.6241265982635541,"blue_wing component, observed fluxes"
+E(B-V)_cumulative,0.1255020437925826,0.10918991450877226,derived from cumulative Halpha/Hbeta decrement

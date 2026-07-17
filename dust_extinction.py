@@ -47,10 +47,14 @@ def load_pkl(path):
 # fluxes + errors, cumulative and per-component, from multiple_gaussian_integration.py
 fluxes = {line: load_pkl(LINES[line]['save']) for line in LINE_NAMES}
 
-# NII6583 has no joint fit / component breakdown -- legacy single-gaussian fit
-NII_legacy = load_pkl('./output/NII/NII_Halpha_ratios.pkl')
-NII6583_flux = {src: NII_legacy['fluxes'][src][1] for src in ('A', 'B')}
-NII6583_flux_err = {src: NII_legacy['flux_uncerts'][src][1] for src in ('A', 'B')}
+# NII6583 (jointfit_all's fit calls it [NII]6584 -- same 6583.45AA line, see
+# multiple_gaussian_integration.py's 'NII6584' entry) now has a proper joint
+# fit tied into the same compound model/covariance as every other line here
+# -- still a single, un-decomposed component per source (A_indices=[31],
+# B_indices=[32]), just no longer the old standalone single-Gaussian fit.
+NII6584_fit = load_pkl('./output/joint_fit/jointfit_all/fluxes/NII6584_fluxes.pkl')
+NII6583_flux = NII6584_fit['fluxes']
+NII6583_flux_err = NII6584_fit['flux_uncerts']
 
 
 # ====================

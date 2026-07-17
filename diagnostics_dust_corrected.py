@@ -340,6 +340,14 @@ def add_balmer_only_wing(component_dict, src, wing, ebv_value, ebv_err):
 add_balmer_only_wing(component_out, 'A', 'red_wing',
                      EBV_component['value']['A']['red_wing'], EBV_component['err']['A']['red_wing'])
 
+# same fix, for source B's blue_wing: B's [OII]3726/3729 and [OIII]4959/5007
+# only have 2 components (red_wing, central -- no blue_wing), so the wing
+# loop above skips 'B' 'blue_wing' entirely via its IndexError guard, even
+# though Halpha/Hbeta/Hgamma DO have a blue_wing component for B -- add that
+# wing back in with just the Balmer-decrement fields, same as A's red_wing.
+add_balmer_only_wing(component_out, 'B', 'blue_wing',
+                     EBV_component['value']['B']['blue_wing'], EBV_component['err']['B']['blue_wing'])
+
 # ====================================
 # component-wise, per source per wing, using the CUMULATIVE E(B-V) applied to
 # each component's flux (see dust_extinction.py's component_results_cumulativeEBV)
@@ -420,6 +428,10 @@ for src in ('A', 'B'):
 add_balmer_only_wing(component_out_cumulativeEBV, 'A', 'red_wing',
                      EBV_cumulative['value']['A'], EBV_cumulative['err']['A'])
 
+# same fix as component_out_cumulativeEBV above, for source B's blue_wing
+add_balmer_only_wing(component_out_cumulativeEBV, 'B', 'blue_wing',
+                     EBV_cumulative['value']['B'], EBV_cumulative['err']['B'])
+
 # ====================================
 # print all before and afters
 # ====================================
@@ -476,6 +488,7 @@ log_OIIIbeta_A_err = logs['A']['log_OIIIbeta_err']
 log_OIIIbeta_B = logs['B']['log_OIIIbeta']
 log_OIIIbeta_B_err = logs['B']['log_OIIIbeta_err']
 
+plt.rcParams['font.family'] = 'serif'
 fig, axes = plt.subplots(2, 1, figsize=(4, 8), gridspec_kw={"hspace": 0})
 
 x_left = min(log_N2_A - log_N2_A_err, log_N2_B - log_N2_B_err) - 0.15
@@ -483,25 +496,37 @@ x = np.linspace(x_left, 0.2, 1000)
 y_B = bpt_line(x, z_B)
 y_A = bpt_line(x, z_A)
 
+# SF/AGN region labels -- same fixed data-coordinate position on both subplots
+sf_x, sf_y = -1.5, -0.5
+agn_x, agn_y = -0.4, 1.2
+
 axes[0].plot(x, y_A, color='blue', lw=0.8)
-axes[0].errorbar(log_N2_A, log_OIIIbeta_A, xerr=log_N2_A_err, yerr=log_OIIIbeta_A_err, fmt='o')
+axes[0].errorbar(log_N2_A, log_OIIIbeta_A, xerr=log_N2_A_err, yerr=log_OIIIbeta_A_err,
+                 fmt='o', color='orange', markersize=6, lw=0.45)
 axes[0].set_xlim(x_left, 0.2)
 axes[0].set_ylim(-1.5, 1.5)
 axes[0].set_ylabel("log([OIII]/H$\\beta$)")
 axes[0].yaxis.set_minor_locator(MultipleLocator(0.1))
-axes[0].text(0.05, 0.92, f"Source A,  z = {z_A}", transform=axes[0].transAxes, fontsize=9, va='top')
+axes[0].text(log_N2_A, log_OIIIbeta_A - 0.15, r"Source A ($z$ = 1.679)",
+             color='orange', fontsize=9, ha='center', va='top')
+axes[0].text(sf_x, sf_y, "SF", color='blue', fontsize=9, ha='center', va='top')
+axes[0].text(agn_x, agn_y, "AGN", color='blue', fontsize=9, ha='center', va='bottom')
 axes[0].tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 
 axes[1].set_xlim(x_left, 0.2)
 axes[1].set_ylim(-1.5, 1.5)
 axes[1].plot(x, y_B, color='blue', lw=0.8)
-axes[1].errorbar(log_N2_B, log_OIIIbeta_B, xerr=log_N2_B_err, yerr=log_OIIIbeta_B_err, fmt='o')
+axes[1].errorbar(log_N2_B, log_OIIIbeta_B, xerr=log_N2_B_err, yerr=log_OIIIbeta_B_err,
+                 fmt='o', color='purple', markersize=6, lw=0.45)
 axes[1].xaxis.set_minor_locator(MultipleLocator(0.1))
 axes[1].yaxis.set_minor_locator(MultipleLocator(0.1))
 axes[1].tick_params(axis='x', which='both', top=True, labeltop=False)
 axes[1].set_xlabel("log([NII]/H$\\alpha$)")
 axes[1].set_ylabel("log([OIII]/H$\\beta$)")
-axes[1].text(0.05, 0.92, f"Source B,  z = {z_B}", transform=axes[1].transAxes, fontsize=9, va='top')
+axes[1].text(log_N2_B, log_OIIIbeta_B - 0.25, r"Source B ($z$ = 1.677)",
+             color='purple', fontsize=9, ha='center', va='top')
+axes[1].text(sf_x, sf_y, "SF", color='blue',fontsize=9, ha='center', va='top')
+axes[1].text(agn_x, agn_y, "AGN", color='blue',fontsize=9, ha='center', va='bottom')
 fig.tight_layout()
 
 fig.savefig(f'{DIAGDIR}/bpt_dust_corrected.png')
