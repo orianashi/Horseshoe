@@ -2,10 +2,11 @@ quantity,value,uncertainty,notes
 abundance_cumulative_12log(O/H),8.718986249267678,0.3825941211942446,KD02 [NII]/[OII] method
 log_M_btfr6_26_corrected_edgeon,8.523131795996685,0.235471337470965,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
 log_M_btfr6_26_corrected_45deg,9.08756303786665,0.235471337470965,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"
-Halpha/Hbeta_cumulative,3.5360598651350283,0.12400224542514651,"observed, pre-dust-correction fluxes"
-Hgamma/Hbeta_cumulative,0.46542894727258893,0.02720355324576698,"observed, pre-dust-correction fluxes"
+Halpha/Hbeta_cumulative,3.5360598651350283,0.1240022454251465,"observed, pre-dust-correction fluxes"
+Hgamma/Hbeta_cumulative,0.4654289472725889,0.0272035532457669,"observed, pre-dust-correction fluxes"
 Halpha/Hbeta_central,3.619292398983293,0.1485157230816546,"central component, observed fluxes"
-Hgamma/Hbeta_central,0.47116515591111696,0.031781106150722625,"central component, observed fluxes"
+Hgamma/Hbeta_central,0.4711651559111169,0.0317811061507226,"central component, observed fluxes"
 Halpha/Hbeta_red_wing,3.141118324247089,0.5521508195560849,"red_wing component, observed fluxes"
-Hgamma/Hbeta_red_wing,0.4382104189662776,0.12918832312953696,"red_wing component, observed fluxes"
-E(B-V)_cumulative,0.21455028949051627,0.03545774927808447,derived from cumulative Halpha/Hbeta decrement
+Hgamma/Hbeta_red_wing,0.4382104189662776,0.1291883231295369,"red_wing component, observed fluxes"
+E(B-V)_cumulative,0.2145502894905162,0.0354577492780844,derived from cumulative Halpha/Hbeta decrement
+SFR_MZR,,,no real solution -- metallicity exceeds max achievable value at this mass under Mannucci+10 eq. 2

@@ -24,7 +24,7 @@ import astropy.units as u
 from astropy.io import fits
 
 import jointfit_all
-import jointfit_twocomponent_B
+import legacy_files.python_files.jointfit_twocomponent_B as jointfit_twocomponent_B
 
 OLD_DIR = './output/joint_fit/jointfit_all'
 NEW_DIR = './output/joint_fit/twocomponent_B'
