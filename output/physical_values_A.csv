@@ -1,7 +1,7 @@
 quantity,value,uncertainty,notes
+abundance_cumulative_12log(O/H),8.718986249267678,0.3825941211942446,KD02 [NII]/[OII] method
 log_M_btfr6_26_corrected_edgeon,8.523131795996685,0.235471337470965,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
 log_M_btfr6_26_corrected_45deg,9.08756303786665,0.235471337470965,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"
-abundance_cumulative_12log(O/H),8.718986249267678,0.3825941211942446,KD02 [NII]/[OII] method
 Halpha/Hbeta_cumulative,3.5365841037054326,0.12353153432168572,"observed, pre-dust-correction fluxes"
 Hgamma/Hbeta_cumulative,0.46542390042865645,0.02715461664183406,"observed, pre-dust-correction fluxes"
 Halpha/Hbeta_central,3.6195668750373047,0.14820671993007348,"central component, observed fluxes"

@@ -1,8 +1,8 @@
 quantity,value,uncertainty,notes
-log_M_btfr6_26_corrected_edgeon,8.620356660762642,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
-log_M_btfr6_26_corrected_45deg,9.184787902632609,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"
 abundance_cumulative_12log(O/H),8.076449000641297,0.3398020838933056,KD02 R23 branch-averaged method
 log_q,7.92767719804795,0.1588810234306853,KD02/KK04 ionization parameter
+log_M_btfr6_26_corrected_edgeon,8.620356660762642,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
+log_M_btfr6_26_corrected_45deg,9.184787902632609,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"
 Halpha/Hbeta_cumulative,3.237961146932927,0.34966562110300586,"observed, pre-dust-correction fluxes"
 Hgamma/Hbeta_cumulative,0.5615738256544998,0.09476760593547355,"observed, pre-dust-correction fluxes"
 Halpha/Hbeta_red_wing,3.320065578054366,3.802691076550725,"red_wing component, observed fluxes"

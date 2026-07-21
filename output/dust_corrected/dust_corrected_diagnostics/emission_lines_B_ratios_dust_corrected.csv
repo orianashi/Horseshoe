@@ -1,10 +1,10 @@
 ratio,value,uncert,notes
-N2,0.004,0.006,
-log_N2,-2.438,0.756,
-12+log(O/H)_N2,7.51,0.431,
+N2,0.035,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
+log_N2,-1.458,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
+12+log(O/H)_N2,8.069,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 [OIII]/Hbeta,4.771,2.46,
-[NII]/[OII],0.02,0.035,
-log_NII_OII,-1.706,0.776,
+[NII]/[OII],0.188,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
+log_NII_OII,-0.726,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 R23,7.766,3.497,
 kk04_R23,6.888,3.152,
 log_kk04_R23,0.838,0.199,

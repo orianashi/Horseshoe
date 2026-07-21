@@ -491,7 +491,12 @@ log_OIIIbeta_B_err = logs['B']['log_OIIIbeta_err']
 plt.rcParams['font.family'] = 'serif'
 fig, axes = plt.subplots(2, 1, figsize=(4, 8), gridspec_kw={"hspace": 0})
 
-x_left = min(log_N2_A - log_N2_A_err, log_N2_B - log_N2_B_err) - 0.15
+# source B's N2 is a one-sided upper limit (NII6583 flux is a 3-sigma
+# ceiling, see multiple_gaussian_integration.py/dust_extinction.py), so
+# log_N2_B_err is NaN -- use a fixed nominal arrow length instead, purely to
+# size the left-pointing upper-limit arrow drawn below, not a real error.
+ARROW_LEN = 0.15
+x_left = min(log_N2_A - log_N2_A_err, log_N2_B - ARROW_LEN) - 0.15
 x = np.linspace(x_left, 0.2, 1000)
 y_B = bpt_line(x, z_B)
 y_A = bpt_line(x, z_A)
@@ -516,7 +521,10 @@ axes[0].tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 axes[1].set_xlim(x_left, 0.2)
 axes[1].set_ylim(-1.5, 1.5)
 axes[1].plot(x, y_B, color='blue', lw=0.8)
-axes[1].errorbar(log_N2_B, log_OIIIbeta_B, xerr=log_N2_B_err, yerr=log_OIIIbeta_B_err,
+# N2 is a one-sided upper limit for B -- draw a leftward arrow at the limit
+# (xuplims=True) instead of a symmetric x error bar; ARROW_LEN only sizes
+# the arrow glyph, it isn't a real uncertainty.
+axes[1].errorbar(log_N2_B, log_OIIIbeta_B, xerr=ARROW_LEN, xuplims=True, yerr=log_OIIIbeta_B_err,
                  fmt='o', color='purple', markersize=6, lw=0.45)
 axes[1].xaxis.set_minor_locator(MultipleLocator(0.1))
 axes[1].yaxis.set_minor_locator(MultipleLocator(0.1))
@@ -554,14 +562,24 @@ CUMULATIVE_NOTES = {
     'E(B-V)': 'derived from observed Halpha/Hbeta decrement',
 }
 
+# NII6583 is a 3-sigma upper limit for source B only (see
+# multiple_gaussian_integration.py/dust_extinction.py) -- every quantity
+# derived from it inherits a NaN uncertainty and a one-sided-limit caveat.
+NII_UPPER_LIMIT_NOTE = '[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN'
+NII_DERIVED_KEYS = {'N2', 'log_N2', '12+log(O/H)_N2', '[NII]/[OII]', 'log_NII_OII'}
+
 
 def build_cumulative_table(src):
     rows = []
     for key in CUMULATIVE_KEYS:
+        if src == 'B' and key in NII_DERIVED_KEYS:
+            note = NII_UPPER_LIMIT_NOTE
+        else:
+            note = CUMULATIVE_NOTES.get(key, '')
         rows.append(dict(ratio=key,
                          value=cumulative_out[src][key],
                          uncert=cumulative_out[src][f'{key}_err'],
-                         notes=CUMULATIVE_NOTES.get(key, '')))
+                         notes=note))
     return pd.DataFrame(rows).round(3)
 
 

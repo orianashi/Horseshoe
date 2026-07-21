@@ -72,16 +72,14 @@ if __name__ == "__main__":
         r = flux[(line, 'A')]
         k_line = k_uv(rest[line])
 
-        # "dust correct the fluxes for the detections" -- an upper limit
-        # passes through unchanged rather than being scaled by an uncertain
-        # correction on top of an already-uncertain 3-sigma bound.
-        if r['is_upper_limit']:
-            flux_after, flux_after_err = r['flux'], r['flux_uncert']
-            applied = False
-        else:
-            flux_after, flux_after_err = flux_correct(r['flux'], r['flux_uncert'],
-                                                        k_line, EBV, EBV_err)
-            applied = True
+        # Extinction suppresses the true flux the same way regardless of
+        # detection significance, so an upper limit gets the same
+        # multiplicative correction as a real detection -- it just can't
+        # carry a real symmetric error. flux_correct()'s error propagation
+        # (rel_flux_err = flux_err/flux) already produces NaN for
+        # flux_after_err when flux_err is NaN, so no branching is needed.
+        flux_after, flux_after_err = flux_correct(r['flux'], r['flux_uncert'],
+                                                    k_line, EBV, EBV_err)
 
         out_rows.append({
             'line': line,
@@ -91,13 +89,13 @@ if __name__ == "__main__":
             'flux_after': flux_after,
             'flux_after_uncert': flux_after_err,
             'is_upper_limit': r['is_upper_limit'],
-            'dust_correction_applied': applied,
+            'dust_correction_applied': True,
             'E(B-V)': EBV,
             'E(B-V)_uncert': EBV_err,
             'k_uv': k_line,
             'units': r['units'],
         })
-        tag = '' if applied else '  [upper limit -- passed through unchanged]'
+        tag = '  [upper limit]' if r['is_upper_limit'] else ''
         print(f"{line:14s} A  flux: {r['flux']:.4g} +/- {r['flux_uncert']:.4g}  ->  "
               f"{flux_after:.4g} +/- {flux_after_err:.4g}  (k_uv={k_line:.3f}){tag}")
 

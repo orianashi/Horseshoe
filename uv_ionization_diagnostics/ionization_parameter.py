@@ -184,6 +184,45 @@ if __name__ == "__main__":
                           f"R={ratio:.4g}{tag}  logU={result['logU']:.3f}+/-{result['logU_uncert']:.3f}  "
                           f"logq={result['logq']:.3f}+/-{result['logq_uncert']:.3f}{range_tag}")
 
+    # Average the two independent diagnostics' logU/logq per (pressure,
+    # metallicity_track) -- R/R_uncert aren't averaged (different ratios,
+    # not the same quantity); R_limit_type is merged into a descriptive
+    # string rather than forced into the existing measurement/upper/lower/
+    # undetermined vocabulary, since CIII's ratio is currently a 'lower'
+    # limit (denominator [CII]2325 is itself an upper limit) while SiIII is
+    # a clean 'measurement' -- there's no existing 2-limit-type merge rule.
+    by_key = {(r['diagnostic'], r['pressure_logPk'], r['metallicity_track']): r
+              for r in out_rows}
+    avg_rows = []
+    for pressure in PRESSURES:
+        for y in METALLICITY_TRACKS:
+            ciii_row = by_key[('CIII', pressure, y)]
+            siiii_row = by_key[('SiIII', pressure, y)]
+            logU_avg = np.mean([ciii_row['logU'], siiii_row['logU']])
+            logU_uncert_avg = 0.5 * np.sqrt(ciii_row['logU_uncert']**2 +
+                                            siiii_row['logU_uncert']**2)
+            logq_avg = np.mean([ciii_row['logq'], siiii_row['logq']])
+            logq_uncert_avg = 0.5 * np.sqrt(ciii_row['logq_uncert']**2 +
+                                            siiii_row['logq_uncert']**2)
+            avg_rows.append({
+                'source': 'A',
+                'diagnostic': 'CIII+SiIII_avg',
+                'pressure_logPk': pressure,
+                'metallicity_track': y,
+                'R': np.nan,
+                'R_uncert': np.nan,
+                'R_limit_type': f"CIII={ciii_row['R_limit_type']}, SiIII={siiii_row['R_limit_type']}",
+                'logU': logU_avg,
+                'logU_uncert': logU_uncert_avg,
+                'logU_in_valid_range': ciii_row['logU_in_valid_range'] and siiii_row['logU_in_valid_range'],
+                'logq': logq_avg,
+                'logq_uncert': logq_uncert_avg,
+            })
+            print(f"A  CIII+SiIII_avg  logP/k={pressure}  y={y}  "
+                  f"logU={logU_avg:.3f}+/-{logU_uncert_avg:.3f}  "
+                  f"logq={logq_avg:.3f}+/-{logq_uncert_avg:.3f}")
+    out_rows.extend(avg_rows)
+
     df = pd.DataFrame(out_rows)
     df.to_csv(f'{IPDIR}/uv_ionization_parameter.csv', index=False)
     with open(f'{IPDIR}/uv_ionization_parameter.pkl', 'wb') as f:

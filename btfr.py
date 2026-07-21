@@ -55,7 +55,8 @@ stddev_B, stddev_B_unc = halpha_model.stddev_3.value, halpha_model.stds['stddev_
 # Get V_c = W_20
 # ====================
 # get rid of instrumental broadening?
-def unbroaden(stddev, stddev_unc, R, z):
+def unbroaden(stddev, stddev_unc, z):
+    R = 5600
     delta_lam = (6562.819 * (1+z)) / R
     siginst = delta_lam / 2.355
     stddev_gal = np.sqrt(stddev**2 - siginst**2)
@@ -136,72 +137,53 @@ def btfr_23(v_c, v_c_unc):
 i, i_unc = np.pi/2, 0.0
 
 # with instrumental broadening correction
-stddev_A_gal, stddev_A_gal_unc = unbroaden(stddev_A, stddev_A_unc, R=5600, z=z_A)
+stddev_A_gal, stddev_A_gal_unc = unbroaden(stddev_A, stddev_A_unc, z=z_A)
 w20_A_corr, w20_A_corr_unc = w20(stddev_A_gal, stddev_A_gal_unc)
 w20_kms_A_corr, w20_kms_A_corr_unc = w20_kms(w20_A_corr, w20_A_corr_unc, mean_A, mean_A_unc)
 v_c_A_corr, v_c_A_corr_unc = V_c(w20_kms_A_corr, w20_kms_A_corr_unc, i, i_unc)
 log_M_A_corr, log_M_A_corr_unc = btfr_6_26(v_c_A_corr, v_c_A_corr_unc)
 
-# without instrumental broadening correction (raw fitted stddev)
-w20_A_raw, w20_A_raw_unc = w20(stddev_A, stddev_A_unc)
-w20_kms_A_raw, w20_kms_A_raw_unc = w20_kms(w20_A_raw, w20_A_raw_unc, mean_A, mean_A_unc)
-v_c_A_raw, v_c_A_raw_unc = V_c(w20_kms_A_raw, w20_kms_A_raw_unc, i, i_unc)
-log_M_A_raw, log_M_A_raw_unc = btfr_6_26(v_c_A_raw, v_c_A_raw_unc)
-
-print("Source A -- BTFR (Ubler 2017 eq. 6.26) mass estimate:")
+print("Source A -- BTFR (Ubler 2017 eq. 6.26) lower limit mass estimate:")
 print(f"  with instrumental broadening correction:    "
       f"log(M) = {log_M_A_corr:.3f} +/- {log_M_A_corr_unc:.3f}  "
       f"(V_c = {v_c_A_corr:.2f} +/- {v_c_A_corr_unc:.2f} km/s)")
-print(f"  without instrumental broadening correction: "
-      f"log(M) = {log_M_A_raw:.3f} +/- {log_M_A_raw_unc:.3f}  "
-      f"(V_c = {v_c_A_raw:.2f} +/- {v_c_A_raw_unc:.2f} km/s)")
 
 # ====================
 # Apply -- Source B, edge-on, btfr_6_26
 # ====================
 # with instrumental broadening correction
-stddev_B_gal, stddev_B_gal_unc = unbroaden(stddev_B, stddev_B_unc, R=5600, z=z_B)
+stddev_B_gal, stddev_B_gal_unc = unbroaden(stddev_B, stddev_B_unc, z=z_B)
 w20_B_corr, w20_B_corr_unc = w20(stddev_B_gal, stddev_B_gal_unc)
 w20_kms_B_corr, w20_kms_B_corr_unc = w20_kms(w20_B_corr, w20_B_corr_unc, mean_B, mean_B_unc)
 v_c_B_corr, v_c_B_corr_unc = V_c(w20_kms_B_corr, w20_kms_B_corr_unc, i, i_unc)
 log_M_B_corr, log_M_B_corr_unc = btfr_6_26(v_c_B_corr, v_c_B_corr_unc)
 
-# without instrumental broadening correction (raw fitted stddev)
-w20_B_raw, w20_B_raw_unc = w20(stddev_B, stddev_B_unc)
-w20_kms_B_raw, w20_kms_B_raw_unc = w20_kms(w20_B_raw, w20_B_raw_unc, mean_B, mean_B_unc)
-v_c_B_raw, v_c_B_raw_unc = V_c(w20_kms_B_raw, w20_kms_B_raw_unc, i, i_unc)
-log_M_B_raw, log_M_B_raw_unc = btfr_6_26(v_c_B_raw, v_c_B_raw_unc)
 
-print("Source B -- BTFR (Ubler 2017 eq. 6.26) mass estimate:")
+print("Source B -- BTFR (Ubler 2017 eq. 6.26) lower limit mass estimate:")
 print(f"  with instrumental broadening correction:    "
       f"log(M) = {log_M_B_corr:.3f} +/- {log_M_B_corr_unc:.3f}  "
       f"(V_c = {v_c_B_corr:.2f} +/- {v_c_B_corr_unc:.2f} km/s)")
-print(f"  without instrumental broadening correction: "
-      f"log(M) = {log_M_B_raw:.3f} +/- {log_M_B_raw_unc:.3f}  "
-      f"(V_c = {v_c_B_raw:.2f} +/- {v_c_B_raw_unc:.2f} km/s)")
 
-btfr_9(v_c_A_corr, v_c_A_corr_unc)
-btfr_23(v_c_A_corr, v_c_A_corr_unc)
-
-btfr_9(v_c_B_corr, v_c_B_corr_unc)
-btfr_23(v_c_B_corr, v_c_B_corr_unc)
 
 
 # APPLY FOR 45 DEG
-# without instrumental broadening correction (raw fitted stddev)
-i_45 = np.pi/4
-v_c_A_raw_45deg, v_c_A_raw_45deg_unc = V_c(w20_kms_A_raw, w20_kms_A_raw_unc, i_45, i_unc)
-log_M_A_raw_45deg, log_M_A_raw_unc_45deg = btfr_6_26(v_c_A_raw_45deg, v_c_A_raw_45deg_unc)
-
-v_c_B_raw_45deg, v_c_B_raw_45deg_unc = V_c(w20_kms_B_raw, w20_kms_B_raw_unc, i_45, i_unc)
-log_M_B_raw_45deg, log_M_B_raw_unc_45deg = btfr_6_26(v_c_B_raw_45deg, v_c_B_raw_45deg_unc)
-
 # with instrumental broadening correction
+i_45 = np.pi/4
 v_c_A_corr_45deg, v_c_A_corr_45deg_unc = V_c(w20_kms_A_corr, w20_kms_A_corr_unc, i_45, i_unc)
 log_M_A_corr_45deg, log_M_A_corr_unc_45deg = btfr_6_26(v_c_A_corr_45deg, v_c_A_corr_45deg_unc)
 
 v_c_B_corr_45deg, v_c_B_corr_45deg_unc = V_c(w20_kms_B_corr, w20_kms_B_corr_unc, i_45, i_unc)
 log_M_B_corr_45deg, log_M_B_corr_unc_45deg = btfr_6_26(v_c_B_corr_45deg, v_c_B_corr_45deg_unc)
+
+print("Source A -- BTFR (Ubler 2017 eq. 6.26) lower limit mass estimate, i=45deg:")
+print(f"  with instrumental broadening correction:    "
+      f"log(M) = {log_M_A_corr_45deg:.3f} +/- {log_M_A_corr_unc_45deg:.3f}  "
+      f"(V_c = {v_c_A_corr_45deg:.2f} +/- {v_c_A_corr_45deg_unc:.2f} km/s)")
+
+print("Source B -- BTFR (Ubler 2017 eq. 6.26) lower limit mass estimate, i=45deg:")
+print(f"  with instrumental broadening correction:    "
+      f"log(M) = {log_M_B_corr_45deg:.3f} +/- {log_M_B_corr_unc_45deg:.3f}  "
+      f"(V_c = {v_c_B_corr_45deg:.2f} +/- {v_c_B_corr_45deg_unc:.2f} km/s)")
 
 write_physical_values('A', [
     dict(quantity='log_M_btfr6_26_corrected_edgeon', value=log_M_A_corr, uncertainty=log_M_A_corr_unc,
@@ -263,25 +245,25 @@ def cosmos_MZ(log_mass, log_mass_unc):
     return z, z_unc
 
 
-z_A_k18_raw, z_A_k18_raw_unc = k18_MZ(log_M_A_raw, log_M_A_raw_unc)
-z_A_cosmos_raw, z_A_cosmos_raw_unc = cosmos_MZ(log_M_A_raw, log_M_A_raw_unc)
+z_A_k18_edgeon, z_A_k18_edgeon_unc = k18_MZ(log_M_A_corr, log_M_A_corr_unc)
+z_A_cosmos_edgeon, z_A_cosmos_edgeon_unc = cosmos_MZ(log_M_A_corr, log_M_A_corr_unc)
 
-z_A_k18_45deg, z_A_k18_45deg_unc = k18_MZ(log_M_A_raw_45deg, log_M_A_raw_unc_45deg)
-z_A_cosmos_45deg, z_A_cosmos_45deg_unc = cosmos_MZ(log_M_A_raw_45deg, log_M_A_raw_unc_45deg)
+z_A_k18_45deg, z_A_k18_45deg_unc = k18_MZ(log_M_A_corr_45deg, log_M_A_corr_unc_45deg)
+z_A_cosmos_45deg, z_A_cosmos_45deg_unc = cosmos_MZ(log_M_A_corr_45deg, log_M_A_corr_unc_45deg)
 
-z_B_k18_raw, z_B_k18_raw_unc = k18_MZ(log_M_B_raw, log_M_B_raw_unc)
-z_B_cosmos_raw, z_B_cosmos_raw_unc = cosmos_MZ(log_M_B_raw, log_M_B_raw_unc)
+z_B_k18_edgeon, z_B_k18_edgeon_unc = k18_MZ(log_M_B_corr, log_M_B_corr_unc)
+z_B_cosmos_edgeon, z_B_cosmos_edgeon_unc = cosmos_MZ(log_M_B_corr, log_M_B_corr_unc)
 
-z_B_k18_45deg, z_B_k18_45deg_unc = k18_MZ(log_M_B_raw_45deg, log_M_B_raw_unc_45deg)
-z_B_cosmos_45deg, z_B_cosmos_45deg_unc = cosmos_MZ(log_M_B_raw_45deg, log_M_B_raw_unc_45deg)
+z_B_k18_45deg, z_B_k18_45deg_unc = k18_MZ(log_M_B_corr_45deg, log_M_B_corr_unc_45deg)
+z_B_cosmos_45deg, z_B_cosmos_45deg_unc = cosmos_MZ(log_M_B_corr_45deg, log_M_B_corr_unc_45deg)
 
 print()
-print("Mass-metallicity relation (12+log(O/H)), from uncorrected-broadening BTFR mass:")
-print(f"Source A, edge-on:  k18 = {z_A_k18_raw:.3f} +/- {z_A_k18_raw_unc:.3f}   "
-      f"cosmos = {z_A_cosmos_raw:.3f} +/- {z_A_cosmos_raw_unc:.3f}")
+print("Mass-metallicity relation (12+log(O/H)), from instrumental-broadening-corrected BTFR mass:")
+print(f"Source A, edge-on:  k18 = {z_A_k18_edgeon:.3f} +/- {z_A_k18_edgeon_unc:.3f}   "
+      f"cosmos = {z_A_cosmos_edgeon:.3f} +/- {z_A_cosmos_edgeon_unc:.3f}")
 print(f"Source A, 45 deg:   k18 = {z_A_k18_45deg:.3f} +/- {z_A_k18_45deg_unc:.3f}   "
       f"cosmos = {z_A_cosmos_45deg:.3f} +/- {z_A_cosmos_45deg_unc:.3f}")
-print(f"Source B, edge-on:  k18 = {z_B_k18_raw:.3f} +/- {z_B_k18_raw_unc:.3f}   "
-      f"cosmos = {z_B_cosmos_raw:.3f} +/- {z_B_cosmos_raw_unc:.3f}")
+print(f"Source B, edge-on:  k18 = {z_B_k18_edgeon:.3f} +/- {z_B_k18_edgeon_unc:.3f}   "
+      f"cosmos = {z_B_cosmos_edgeon:.3f} +/- {z_B_cosmos_edgeon_unc:.3f}")
 print(f"Source B, 45 deg:   k18 = {z_B_k18_45deg:.3f} +/- {z_B_k18_45deg_unc:.3f}   "
       f"cosmos = {z_B_cosmos_45deg:.3f} +/- {z_B_cosmos_45deg_unc:.3f}")

@@ -510,6 +510,27 @@ if __name__ == "__main__":
             mean_param.fixed = True
 
     # ==================
+    # Source B's [NII]6584 (index 32) is noise-dominated -- amplitude 0.089
+    # vs. source A's 0.695 -- so its fitted flux is treated as a 3-sigma
+    # upper limit instead of a point measurement, using the same recipe as
+    # uv_ionization_diagnostics/fit_uv_lines.py's resolve_detection(): 3x the
+    # local continuum noise, integrated over an assumed line width via the
+    # Gaussian flux formula amp*stddev*sqrt(2pi). The assumed width here is
+    # simply index 32's own (already tied-then-baked) stddev -- no need to
+    # borrow a width from another line the way the UV script borrows HeII's,
+    # since NII's width is already deterministically tied to Halpha_B's.
+    # windows['[NII]6584']['noise_full'] is in the same flux_norm-normalized
+    # units as every amplitude in this fit, so no unit conversion is needed.
+    # ==================
+    SQRT2PI_NII = np.sqrt(2 * np.pi)
+    nii_b_local_noise = np.nanmedian(windows['[NII]6584']['noise_full'])
+    nii_b_assumed_std = bestfit_model.stddev_32.value
+    nii_b_flux_3sigma = 3 * nii_b_local_noise * nii_b_assumed_std * SQRT2PI_NII
+    print(f"[NII]6584 source B treated as 3-sigma upper limit: "
+          f"local_noise={nii_b_local_noise:.4g}, assumed_std={nii_b_assumed_std:.4g}, "
+          f"flux_3sigma={nii_b_flux_3sigma:.4g}")
+
+    # ==================
     # per-line plotting -- [NII]6584 is appended here (own dedicated
     # plot/save, matching every other line) even though it's excluded from
     # `line_order` itself (that list drives the joint lam_all fit array, and
@@ -606,7 +627,10 @@ if __name__ == "__main__":
 
         fig.savefig(
             f'./output/joint_fit/jointfit_all/{name}_joint_tied_fit.png')
+        save_dict = {'model': bestfit_model, 'tie_map': tie_map}
+        if name == '[NII]6584':
+            save_dict['upper_limit_B'] = {'flux': nii_b_flux_3sigma, 'is_upper_limit': True}
         with open(
                 f'./output/joint_fit/jointfit_all/{name}_joint_tied_fit.pkl',
                 'wb') as f:
-            dill.dump({'model': bestfit_model, 'tie_map': tie_map}, f)
+            dill.dump(save_dict, f)

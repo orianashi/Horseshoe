@@ -55,6 +55,9 @@ fluxes = {line: load_pkl(LINES[line]['save']) for line in LINE_NAMES}
 NII6584_fit = load_pkl('./output/joint_fit/jointfit_all/fluxes/NII6584_fluxes.pkl')
 NII6583_flux = NII6584_fit['fluxes']
 NII6583_flux_err = NII6584_fit['flux_uncerts']
+# source B's is a 3-sigma upper limit (see multiple_gaussian_integration.py) --
+# NaN flux_err, propagated as such below
+NII6583_is_upper_limit = NII6584_fit['is_upper_limit']
 
 
 # ====================
@@ -407,6 +410,7 @@ NII_result = {
     'flux_uncerts_before': {src: NII6583_results[src]['flux_before_err'] for src in ('A', 'B')},
     'E(B-V)_cumulative': {src: EBV_cumulative[src][0] for src in ('A', 'B')},
     'E(B-V)_cumulative_err': {src: EBV_cumulative[src][1] for src in ('A', 'B')},
+    'is_upper_limit': NII6583_is_upper_limit,
     'units': 'ergs / s / cm2',
 }
 with open(f'{OUTDIR}/NII6583_dust_corrected.pkl', 'wb') as f:

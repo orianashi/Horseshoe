@@ -240,11 +240,28 @@ if __name__ == "__main__":
             for k, v in component_flux_uncerts.items()
         }
 
+        # source B's [NII]6584 is noise-dominated -- jointfit_all.py computes
+        # a 3-sigma upper limit and stores it alongside the model/tie_map
+        # (see its 'upper_limit_B' comment); swap it in here in place of the
+        # normal fitted flux, with NaN uncertainty since a limit isn't a
+        # symmetric-error measurement.
+        is_upper_limit = {'A': False, 'B': False}
+        if line_name == 'NII6584':
+            with open(cfg['pkl'], 'rb') as f:
+                pkl_obj = dill.load(f)
+            if isinstance(pkl_obj, dict) and 'upper_limit_B' in pkl_obj:
+                flux_B = pkl_obj['upper_limit_B']['flux']
+                uncert_B = np.nan
+                component_fluxes['B'] = np.array([flux_B])
+                component_flux_uncerts['B'] = np.array([np.nan])
+                is_upper_limit['B'] = pkl_obj['upper_limit_B']['is_upper_limit']
+
         print(
             f"Flux for {line_name} source A: {flux_A:.3f} +/- {uncert_A:.3f} ergs/s/cm2"
         )
         print(
             f"Flux for {line_name} source B: {flux_B:.3f} +/- {uncert_B:.3f} ergs/s/cm2"
+            f"{'  [3-sigma UPPER LIMIT]' if is_upper_limit['B'] else ''}"
         )
 
         result = {
@@ -260,5 +277,8 @@ if __name__ == "__main__":
             'component_flux_uncerts': component_flux_uncerts,
             'units': 'ergs / s / cm2',
         }
+        # scoped to NII6584 only -- no schema change for the other 8 lines
+        if line_name == 'NII6584':
+            result['is_upper_limit'] = is_upper_limit
         with open(cfg['save'], 'wb') as f:
             dill.dump(result, f)

@@ -1,6 +1,7 @@
 import os
 
 import dill
+import numpy as np
 import pandas as pd
 
 from ionization_parameter import (TABLE1, PRESSURES,
@@ -71,6 +72,44 @@ if __name__ == "__main__":
                 print(f"A  {diag_name:6s}  logP/k={pressure}  y={y}  "
                       f"R={ratio:.4g}{tag}  logU={result['logU']:.3f}+/-{result['logU_uncert']:.3f}  "
                       f"logq={result['logq']:.3f}+/-{result['logq_uncert']:.3f}{range_tag}  [DUST CORRECTED]")
+
+    # Average the two independent diagnostics' logU/logq per (pressure,
+    # metallicity_track) -- same treatment as ionization_parameter.py; see
+    # that file's comment for why R/R_limit_type aren't simply averaged.
+    by_key = {(r['diagnostic'], r['pressure_logPk'], r['metallicity_track']): r
+              for r in out_rows}
+    avg_rows = []
+    for pressure in PRESSURES:
+        for y in METALLICITY_TRACKS:
+            ciii_row = by_key[('CIII', pressure, y)]
+            siiii_row = by_key[('SiIII', pressure, y)]
+            logU_avg = np.mean([ciii_row['logU'], siiii_row['logU']])
+            logU_uncert_avg = 0.5 * np.sqrt(ciii_row['logU_uncert']**2 +
+                                            siiii_row['logU_uncert']**2)
+            logq_avg = np.mean([ciii_row['logq'], siiii_row['logq']])
+            logq_uncert_avg = 0.5 * np.sqrt(ciii_row['logq_uncert']**2 +
+                                            siiii_row['logq_uncert']**2)
+            avg_rows.append({
+                'source': 'A',
+                'diagnostic': 'CIII+SiIII_avg',
+                'pressure_logPk': pressure,
+                'metallicity_track': y,
+                'R': np.nan,
+                'R_uncert': np.nan,
+                'R_limit_type': f"CIII={ciii_row['R_limit_type']}, SiIII={siiii_row['R_limit_type']}",
+                'logU': logU_avg,
+                'logU_uncert': logU_uncert_avg,
+                'logU_in_valid_range': ciii_row['logU_in_valid_range'] and siiii_row['logU_in_valid_range'],
+                'logq': logq_avg,
+                'logq_uncert': logq_uncert_avg,
+                'dust_corrected': True,
+                'E(B-V)': ciii_row['E(B-V)'],
+                'E(B-V)_uncert': ciii_row['E(B-V)_uncert'],
+            })
+            print(f"A  CIII+SiIII_avg  logP/k={pressure}  y={y}  "
+                  f"logU={logU_avg:.3f}+/-{logU_uncert_avg:.3f}  "
+                  f"logq={logq_avg:.3f}+/-{logq_uncert_avg:.3f}  [DUST CORRECTED]")
+    out_rows.extend(avg_rows)
 
     df = pd.DataFrame(out_rows)
     df.to_csv(f'{DUST_IPDIR}/uv_ionization_parameter_dust_corrected.csv', index=False)
