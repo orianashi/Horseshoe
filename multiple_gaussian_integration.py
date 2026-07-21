@@ -77,7 +77,10 @@ LINES = {
     'NII6584': {
         'pkl': './output/joint_fit/jointfit_all/[NII]6584_joint_tied_fit.pkl',
         'A_indices': [31],
-        'B_indices': [32],
+        # source B has no fitted component (see jointfit_all.py) -- flux_and_uncert
+        # with an empty index list is a safe no-op (returns (0.0, 0.0)); B's
+        # real value is substituted below from the pkl's 'upper_limit_B'.
+        'B_indices': [],
         'save': './output/joint_fit/jointfit_all/fluxes/NII6584_fluxes.pkl',
     },
     # Hdelta/CIII have no joint fit yet -- unrelated single-line refits.

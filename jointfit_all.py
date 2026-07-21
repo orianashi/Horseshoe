@@ -168,7 +168,7 @@ B_INDICES = {
     'Hbeta': [17, 18, 19],
     'Hgamma': [22, 23, 24],
     '[OII]': [26, 27, 29, 30],
-    '[NII]6584': [32],
+    '[NII]6584': [],  # no fitted component for B -- see build_tied comment above
 }
 
 colors = {
@@ -422,12 +422,18 @@ if __name__ == "__main__":
 
     # [NII]6584: single Gaussian per source (no red/blue wing decomposition,
     # unlike Halpha/OIII/Hbeta/Hgamma), tied to Halpha's central component.
-    # Amplitude guesses scaled down from Halpha's own central-component
-    # guesses (12, 8) to roughly match the ~1-2% NII/Halpha flux ratio seen
-    # in the legacy fit (output/NII/NII_Halpha_ratios.pkl).
+    # Amplitude guess scaled down from Halpha's own central-component guess
+    # (12) to roughly match the ~1-2% NII/Halpha flux ratio seen in the
+    # legacy fit (output/NII/NII_Halpha_ratios.pkl).
+    # Source B gets NO fitted component here -- its NII is noise-dominated
+    # (amplitude 0.089 vs. source A's 0.695 when it WAS fit), so rather than
+    # let a noise-driven free amplitude sit in the joint fit, it's excluded
+    # entirely and replaced below by a 3-sigma upper limit computed straight
+    # from the local noise and Halpha_B_central's own fitted stddev (index
+    # 3) scaled by this same tie ratio -- i.e. still "tied" to Halpha_B's
+    # width, just not as a live fit parameter.
     r_nii_ha = rest['[NII]6584'] / rest['Halpha']
     gaussians.append(build_tied('[NII]6584_A', 0, r_nii_ha, 0.3, (0, None)))  # 31
-    gaussians.append(build_tied('[NII]6584_B', 3, r_nii_ha, 0.15, (0, None)))  # 32
 
     continua = []
     for name in line_order:
@@ -510,21 +516,21 @@ if __name__ == "__main__":
             mean_param.fixed = True
 
     # ==================
-    # Source B's [NII]6584 (index 32) is noise-dominated -- amplitude 0.089
-    # vs. source A's 0.695 -- so its fitted flux is treated as a 3-sigma
-    # upper limit instead of a point measurement, using the same recipe as
+    # Source B's [NII]6584 has no fitted component in this joint fit (see the
+    # build_tied comment above) -- its noise-dominated flux is instead a
+    # 3-sigma upper limit, using the same recipe as
     # uv_ionization_diagnostics/fit_uv_lines.py's resolve_detection(): 3x the
     # local continuum noise, integrated over an assumed line width via the
-    # Gaussian flux formula amp*stddev*sqrt(2pi). The assumed width here is
-    # simply index 32's own (already tied-then-baked) stddev -- no need to
-    # borrow a width from another line the way the UV script borrows HeII's,
-    # since NII's width is already deterministically tied to Halpha_B's.
-    # windows['[NII]6584']['noise_full'] is in the same flux_norm-normalized
-    # units as every amplitude in this fit, so no unit conversion is needed.
+    # Gaussian flux formula amp*stddev*sqrt(2pi). The assumed width is
+    # Halpha_B_central's own fitted stddev (index 3) scaled by the same
+    # r_nii_ha tie ratio NII6584_A uses -- "tied" to Halpha_B's width without
+    # NII_B ever being a live fit parameter. windows['[NII]6584']['noise_full']
+    # is in the same flux_norm-normalized units as every amplitude in this
+    # fit, so no unit conversion is needed.
     # ==================
     SQRT2PI_NII = np.sqrt(2 * np.pi)
     nii_b_local_noise = np.nanmedian(windows['[NII]6584']['noise_full'])
-    nii_b_assumed_std = bestfit_model.stddev_32.value
+    nii_b_assumed_std = bestfit_model.stddev_3.value * r_nii_ha
     nii_b_flux_3sigma = 3 * nii_b_local_noise * nii_b_assumed_std * SQRT2PI_NII
     print(f"[NII]6584 source B treated as 3-sigma upper limit: "
           f"local_noise={nii_b_local_noise:.4g}, assumed_std={nii_b_assumed_std:.4g}, "

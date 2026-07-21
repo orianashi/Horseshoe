@@ -1,17 +1,17 @@
 ratio,value,uncert,notes
 N2,0.035,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
-log_N2,-1.458,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
+log_N2,-1.457,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 12+log(O/H)_N2,8.069,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
-[OIII]/Hbeta,4.771,2.46,
+[OIII]/Hbeta,4.77,2.46,
 [NII]/[OII],0.188,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
-log_NII_OII,-0.726,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
-R23,7.766,3.497,
+log_NII_OII,-0.725,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
+R23,7.764,3.497,
 kk04_R23,6.888,3.152,
 log_kk04_R23,0.838,0.199,
-KD02_O32,3.388,2.132,
-log_KD02_O32,0.53,0.273,
-KK04_O32,11.99,6.712,
+KD02_O32,3.392,2.143,
+log_KD02_O32,0.53,0.274,
+KK04_O32,11.996,6.718,
 log_KK04_O32,1.079,0.243,
-Halpha/Hbeta,3.238,0.35,"from observed, pre-dust-correction fluxes"
+Halpha/Hbeta,3.236,0.35,"from observed, pre-dust-correction fluxes"
 Hgamma/Hbeta,0.562,0.095,"from observed, pre-dust-correction fluxes"
-E(B-V),0.126,0.109,derived from observed Halpha/Hbeta decrement
+E(B-V),0.125,0.109,derived from observed Halpha/Hbeta decrement
