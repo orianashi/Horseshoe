@@ -76,19 +76,53 @@ def kk04_q(z, z_err, kk04_o32, kk04_o32_err):
 
     logq_err = np.sqrt((dlogq_dy * kk04_o32_err)**2 + (dlogq_dz * z_err)**2)
     return logq, logq_err
-# ==================
-# KD02 PROCESS FOR METALLICITIES below 8.5  
-# ==================
 
-# use [NII]/Halpha to identify low vs high metallicity regime 
+# ==================
+# KD02 METALLICITY NONCOMBINED  
+# ==================
+# KD02 eq. 4 / Table 3, log(R23) diagnostic at q=3.0e8 cm/s:
+# log(R23) = k0 + k1*x + k2*x^2 + k3*x^3 + k4*x^4, x = log(O/H)+12
+def z_r23_q3e8(kk04_r23, kk04_r23_unc):
+    k0 = -1550.53
+    k1 = 784.26
+    k2 = -149.245
+    k3 = 12.6618
+    k4 = -0.403774
+    roots = _real_roots([k4, k3, k2, k1, k0], k0, kk04_r23)
+    if len(roots) == 0:
+        # no real root -- this R23 value exceeds what this q track can
+        # produce at any metallicity (same "no valid solution" case as
+        # r23_q3_e8_combined's negative discriminant above), so return NaN
+        # rather than crash
+        return np.nan, np.nan
+    z = roots[0]  # lower (low-metallicity) branch of the double-valued R23 track
+    # z is a root of k4*x^4+k3*x^3+k2*x^2+k1*x+k0 = kk04_r23, not an explicit
+    # function of kk04_r23 -- propagate via implicit differentiation (same
+    # delta-method trick as high_metallicity_q_halfsolar/_solar above):
+    # d(kk04_r23)/dz = 4*k4*z^3 + 3*k3*z^2 + 2*k2*z + k1, so dz/d(kk04_r23) =
+    # 1/that, evaluated at the root itself.
+    dFdz = 4*k4*z**3 + 3*k3*z**2 + 2*k2*z + k1
+    z_unc = np.abs(kk04_r23_unc / dFdz)
+    return z, z_unc 
+
+# use [NII]/Halpha to identify low vs high metallicity regime
 def n2ha_q1_e8(n2ha, n2ha_err):
     k0 = -2983.69
     k1 = 1454.45
     k2 = -266.015
     k3 = 21.6024
     k4 = -0.6566
-    abundance = _real_roots([k4, k3, k2, k1, k0], k0, n2ha)
-    abundance_err = "placeholder"
+    roots = _real_roots([k4, k3, k2, k1, k0], k0, n2ha)
+    if len(roots) == 0:
+        return np.nan, np.nan
+    abundance = roots[0]  # lower (low-metallicity) branch, same convention as z_r23_q3e8
+    # abundance is a root of k4*x^4+k3*x^3+k2*x^2+k1*x+k0 = n2ha, not an
+    # explicit function of n2ha -- propagate via implicit differentiation
+    # (same delta-method trick as z_r23_q3e8/high_metallicity_q_* above):
+    # d(n2ha)/d(abundance) = 4*k4*x^3 + 3*k3*x^2 + 2*k2*x + k1, so
+    # d(abundance)/d(n2ha) = 1/that, evaluated at the root itself.
+    dFdx = 4*k4*abundance**3 + 3*k3*abundance**2 + 2*k2*abundance + k1
+    abundance_err = np.abs(n2ha_err / dFdx)
     return abundance, abundance_err
 
 def n2ha_q3_e8(n2ha, n2ha_err):
@@ -97,9 +131,52 @@ def n2ha_q3_e8(n2ha, n2ha_err):
     k2 = -272.883
     k3 = 22.0132
     k4 = -0.6646
-    abundance = _real_roots([k4, k3, k2, k1, k0], k0, n2ha)
-    abundance_err = "placeholder"
+    roots = _real_roots([k4, k3, k2, k1, k0], k0, n2ha)
+    if len(roots) == 0:
+        return np.nan, np.nan
+    abundance = roots[0]  # lower (low-metallicity) branch, same convention as z_r23_q3e8
+    # same implicit-differentiation delta method as n2ha_q1_e8 above
+    dFdx = 4*k4*abundance**3 + 3*k3*abundance**2 + 2*k2*abundance + k1
+    abundance_err = np.abs(n2ha_err / dFdx)
     return abundance, abundance_err
+
+# ==================
+# Kewley et al. 2019 (K19) Table 2 bicubic surface fit: [NII]/Halpha
+# ==================
+# z = A + Bx + Cy + Dxy + Ex^2 + Fy^2 + Gxy^2 + Hyx^2 + Ix^3 + Jy^3, where
+# x = log([NII]6584/Halpha), y = log(U) = log(q) - log(c), z = log(O/H)+12.
+# Valid over 7.63 <= z <= 8.53 and -3.98 <= log(U) <= -1.98 (K19 Table 2
+# footnote). Unlike KD02's n2ha_q1_e8/n2ha_q3_e8 (a discrete q-track,
+# requiring root-finding), this is a direct, continuous surface in both the
+# line ratio AND the ionization parameter -- no branch selection needed.
+# K19 quotes a 0.67% RMS scatter for this diagnostic; added in quadrature to
+# the propagated measurement uncertainty (as a fraction of |z|), same
+# convention as KD02's own quadrature-added scatter terms (0.04/0.07)
+# elsewhere in this file, just converted from a percentage to a dex value.
+def k19_n2ha_q(n2ha, n2ha_err, log_q, log_q_err):
+    Ac, Bc, Cc, Dc, Ec, Fc, Gc, Hc, Ic, Jc = (
+        10.526, 1.9958, -0.6741, 0.2892, 0.5712, -0.6597, 0.0101, 0.0800, 0.0782, -0.0982)
+    RMS_PCT = 0.67
+    C_LIGHT_CGS = 2.99792458e10  # cm/s
+
+    x = n2ha
+    y = log_q - np.log10(C_LIGHT_CGS)  # log(U) = log(q) - log(c)
+
+    z = (Ac + Bc*x + Cc*y + Dc*x*y + Ec*x**2 + Fc*y**2
+         + Gc*x*y**2 + Hc*y*x**2 + Ic*x**3 + Jc*y**3)
+
+    # partial derivatives of the bicubic surface, for error propagation
+    dzdx = Bc + Dc*y + 2*Ec*x + Gc*y**2 + 2*Hc*y*x + 3*Ic*x**2
+    dzdy = Cc + Dc*x + 2*Fc*y + 2*Gc*x*y + Hc*x**2 + 3*Jc*y**2
+    z_err_prop = np.sqrt((dzdx*n2ha_err)**2 + (dzdy*log_q_err)**2)
+    z_scatter = np.abs(z) * RMS_PCT / 100
+    z_err = np.sqrt(z_err_prop**2 + z_scatter**2)
+    return z, z_err
+
+# ==================
+# KD02 PROCESS FOR METALLICITIES below 8.5
+# ==================
+
 
 # use the metallicity + O32 to constrain the ionization parameter using KD02's "improved version"
 # 0.1*Z_solar <=> 12 + log(O/H) =~ 7.9
@@ -221,7 +298,8 @@ def z94_m91(KK04_r23, KK04_r23_err, kk04_o32, kk04_o32_err):
     avg_err = np.sqrt(z94_err**2 + m91u_err**2) / 2
     return avg, avg_err
 
-# step 3b - if step 2 produces estimate velow 8.5, use R23 method 
+# step 3b - if step 2 produces estimate velow 8.5, use R23 method
+# since the combined R23 method has a sqrt that produces NaN in our range, use the original
 
 # ========================
 # Calculate cumulative metallicity 
@@ -257,30 +335,70 @@ log_q_B_unc = q_B_unc / (q_B * np.log(10))
 print(f"Source B log(q) = {log_q_B:.3f} +- {log_q_B_unc:.3f}")
 
 # SOURCE A
-"""
-# using the low-metallicity process (ruled out)
-n2ha_q3_e8(A['log_N2'], A['log_N2_err'])[0]  #8.54
-z_halfsolar_combined(A['log_KD02_O32'], A['log_KD02_O32_err'])[0] #4.3e8
-r23_q3_e8_combined(A['log_kk04_R23'], A['log_kk04_R23_err'])[0] # HERE IS WHERE THERE IS A NAN
-# also, abundanced in 8.5 - 8.9 region can't be reliably determined with R23
-"""
 
 #using the high-metallicity process
-abundance_A, abundance_A_unc_input = n2o2_combined(A['log_NII_OII'], A['log_NII_OII_err']) # 8.83
-abundance_A_unc = np.sqrt(0.04**2 + abundance_A_unc_input**2) #accounts for scatter of [NII]/[OII] method table 4 KD02
-# the [NII]/[OII] diagnostic is only valid for ionization parameters between 5e6 and 3e8, so this is technically an extrapolation
-high_metallicity_q_solar(A['log_KD02_O32'], A['log_KD02_O32_err']) #log(q)=9.14
-kk04_q_A, kk04_q_A_unc = kk04_q(abundance_A, abundance_A_unc, A['log_KK04_O32'], A['log_KK04_O32_err'])
+#step 1: [NII]/[OII]
+n2o2_combined(A['log_NII_OII'], A['log_NII_OII_err']) # 8.34
+#step 2: since step 1 is below 8.6
+z94_m91(A['log_kk04_R23'], A['log_kk04_R23_err'],  A['log_KK04_O32'], A['log_KK04_O32_err']) #8.14
+#since step 2 is below 8.5, switch to the low-metallicity process
+
+# using the low-metallicity process
+n2ha_q3_e8(A['log_N2'], A['log_N2_err'])  #8.42
+q_A, q_A_unc = z_halfsolar_combined(A['log_KD02_O32'], A['log_KD02_O32_err']) #2.4e8
+r23_q3_e8_combined(A['log_kk04_R23'], A['log_kk04_R23_err'])[0] # HERE IS WHERE THERE IS A NAN, but the desmos graph look like around 8.3-8.6
+# now use the normal R23 method
+z_r23_q3e8(A['log_kk04_R23'], A['log_kk04_R23_err'])[0] # ALSO NaN -- no real root at this q, confirms R23 can't constrain this source
+# abundance in 8.5 - 8.9 region can't be reliably determined with R23
+#finally, default back to the N2 method :(
+# NOTE: KD02 explicitly excludes [NII]/Halpha from their quantitative scatter
+# comparison (no Table 4 entry, unlike [NII]/[OII]'s 0.04 or R23's 0.07) and
+# state plainly it is "relatively insensitive to abundance" -- n2ha_q3_e8's
+# own uncertainty (above, unused now) is therefore just the propagated
+# measurement error, not a KD02-vetted combined uncertainty. Kewley et al.
+# (2019) Table 2 gives a continuous bicubic surface for this SAME [NII]/Halpha
+# ratio, using log(U) (from log_q_A below) instead of a fixed q-track, and
+# quotes an actual 0.67% RMS scatter -- use that instead (see k19_n2ha_q).
+
+# q_A/q_A_unc are linear (cm/s) -- same delta-method conversion to log-space
+# as Source B's log_q_B above: sigma_log(q) = sigma_q/(q*ln10).
+log_q_A = np.log10(q_A)
+log_q_A_unc = q_A_unc / (q_A * np.log(10))
+print(f"Source A log(q) = {log_q_A:.3f} +- {log_q_A_unc:.3f}")
+
+abundance_A, abundance_A_unc = k19_n2ha_q(A['log_N2'], A['log_N2_err'], log_q_A, log_q_A_unc)
+
+
 # FINAL
 print(f"Source A 12+log(O/H): {abundance_A:.5f} +- {abundance_A_unc:.5f}")
 
 write_physical_values('A', [
     dict(quantity='abundance_cumulative_12log(O/H)', value=abundance_A, uncertainty=abundance_A_unc,
-         notes='KD02 [NII]/[OII] method'),
+         notes='Kewley+2019 Table 2 [NII]/Halpha bicubic surface (k19_n2ha_q), using log(U) '
+               'derived from log_q (KD02 z_halfsolar_combined) -- KD02\'s own [NII]/[OII] and '
+               'R23 branches did not converge/apply for this source; uncertainty includes K19\'s '
+               'quoted 0.67% RMS scatter added in quadrature to the propagated measurement error'),
+    dict(quantity='log_q', value=log_q_A, uncertainty=log_q_A_unc,
+         notes='KD02 ionization parameter (z_halfsolar_combined, KD02_O32)'),
 ])
+
+# alternative Source B abundance from the same K19 [NII]/Halpha surface used
+# for Source A -- added alongside (not replacing) the primary KD02
+# R23-branch-averaged abundance_cumulative_12log(O/H) row above. [NII] is a
+# 3-sigma upper limit for Source B, so log_N2_err is NaN and this inherits a
+# NaN uncertainty (value is a ceiling), same convention as every other
+# [NII]-derived quantity for Source B in this pipeline.
+abundance_B_k19, abundance_B_k19_unc = k19_n2ha_q(B['log_N2'], B['log_N2_err'], log_q_B, log_q_B_unc)
+print(f"Source B 12+log(O/H) [K19 N2Ha alt] = {abundance_B_k19:.3f} +- {abundance_B_k19_unc:.3f}")
+
 write_physical_values('B', [
     dict(quantity='abundance_cumulative_12log(O/H)', value=abundance_B, uncertainty=abundance_B_unc,
          notes='KD02 R23 branch-averaged method'),
+    dict(quantity='abundance_cumulative_12log(O/H)_K19_N2Ha', value=abundance_B_k19, uncertainty=abundance_B_k19_unc,
+         notes='ALTERNATIVE estimate, not the primary abundance above -- Kewley+2019 Table 2 '
+               '[NII]/Halpha bicubic surface (k19_n2ha_q), using log(U) derived from log_q '
+               '(KD02/KK04); [NII] is a 3-sigma upper limit for Source B so uncertainty is NaN '
+               '(value is a ceiling)'),
     dict(quantity='log_q', value=log_q_B, uncertainty=log_q_B_unc, notes='KD02/KK04 ionization parameter'),
 ])
 
@@ -313,5 +431,3 @@ print(f"Source B gal log(q) = {log_q_Bgal:.3f} +- {log_q_Bgal_unc:.3f}")
 # SOURCE A is the same abundance as the cumulative, because source A had only one component of OII
 high_metallicity_q_solar(A_central['log_KD02_O32'], A_central['log_KD02_O32_err'])
 kk04_q_Agal, kk04_q_Agal_unc = kk04_q(abundance_A, abundance_A_unc, A_central['log_KK04_O32'], A_central['log_KK04_O32_err'])
-
-print("For Source A log(q) please reference Notion...")

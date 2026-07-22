@@ -191,6 +191,8 @@ for src in ('A', 'B'):
                         NII6583['flux_uncerts'][src], Halpha['flux_uncerts'][src])
     OIIIbeta, OIIIbeta_err = ratios(OIII5007['fluxes'][src], Hbeta['fluxes'][src],
                                     OIII5007['flux_uncerts'][src], Hbeta['flux_uncerts'][src])
+    # O3N2 = ([OIII]5007/Hbeta) / ([NII]6583/Halpha) = OIIIbeta / N2 (see diagnostics.py)
+    O3N2, O3N2_err = ratios(OIIIbeta, N2, OIIIbeta_err, N2_err)
     NII_OII, NII_OII_err = ratios(NII6583['fluxes'][src], OII3726['fluxes'][src],
                                   NII6583['flux_uncerts'][src], OII3726['flux_uncerts'][src])
     R23_val, R23_err = R23(
@@ -211,6 +213,7 @@ for src in ('A', 'B'):
 
     log_N2, log_N2_err = log_uncert(N2, N2_err)
     log_OIIIbeta, log_OIIIbeta_err = log_uncert(OIIIbeta, OIIIbeta_err)
+    log_O3N2, log_O3N2_err = log_uncert(O3N2, O3N2_err)
     log_NII_OII, log_NII_OII_err = log_uncert(NII_OII, NII_OII_err)
     log_kR23, log_kR23_err = log_uncert(kR23_val, kR23_err)
     log_KD02_O32_val, log_KD02_O32_err = log_uncert(KD02_O32_val, KD02_O32_err)
@@ -222,6 +225,8 @@ for src in ('A', 'B'):
         'log_N2_err': log_N2_err,
         'log_OIIIbeta': log_OIIIbeta,
         'log_OIIIbeta_err': log_OIIIbeta_err,
+        'log_O3N2': log_O3N2,
+        'log_O3N2_err': log_O3N2_err,
     }
 
     cumulative_out[src] = {
@@ -233,6 +238,10 @@ for src in ('A', 'B'):
         '12+log(O/H)_N2_err': metallicity_N2_err,
         '[OIII]/Hbeta': OIIIbeta,
         '[OIII]/Hbeta_err': OIIIbeta_err,
+        'O3N2': O3N2,
+        'O3N2_err': O3N2_err,
+        'log_O3N2': log_O3N2,
+        'log_O3N2_err': log_O3N2_err,
         '[NII]/[OII]': NII_OII,
         '[NII]/[OII]_err': NII_OII_err,
         'log_NII_OII': log_NII_OII,
@@ -612,9 +621,9 @@ plt.show()
 # csv tables
 # ====================================
 CUMULATIVE_KEYS = [
-    'N2', 'log_N2', '12+log(O/H)_N2', '[OIII]/Hbeta', '[NII]/[OII]',
-    'log_NII_OII', 'R23', 'kk04_R23', 'log_kk04_R23', 'KD02_O32',
-    'log_KD02_O32', 'KK04_O32', 'log_KK04_O32', 'Halpha/Hbeta',
+    'N2', 'log_N2', '12+log(O/H)_N2', '[OIII]/Hbeta', 'O3N2', 'log_O3N2',
+    '[NII]/[OII]', 'log_NII_OII', 'R23', 'kk04_R23', 'log_kk04_R23',
+    'KD02_O32', 'log_KD02_O32', 'KK04_O32', 'log_KK04_O32', 'Halpha/Hbeta',
     'Hgamma/Hbeta', 'E(B-V)'
 ]
 
@@ -634,7 +643,7 @@ CUMULATIVE_NOTES = {
 # multiple_gaussian_integration.py/dust_extinction.py) -- every quantity
 # derived from it inherits a NaN uncertainty and a one-sided-limit caveat.
 NII_UPPER_LIMIT_NOTE = '[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN'
-NII_DERIVED_KEYS = {'N2', 'log_N2', '12+log(O/H)_N2', '[NII]/[OII]', 'log_NII_OII'}
+NII_DERIVED_KEYS = {'N2', 'log_N2', '12+log(O/H)_N2', 'O3N2', 'log_O3N2', '[NII]/[OII]', 'log_NII_OII'}
 
 
 def build_cumulative_table(src):

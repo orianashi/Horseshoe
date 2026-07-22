@@ -3,6 +3,8 @@ N2,0.037,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncert
 log_N2,-1.437,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 12+log(O/H)_N2,8.081,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 [OIII]/Hbeta,4.732,2.429,
+O3N2,129.439,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
+log_O3N2,2.112,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 [NII]/[OII],0.261,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 log_NII_OII,-0.583,,"[NII] is a 3-sigma upper limit (Source B); value is a ceiling, uncertainty is NaN"
 R23,6.946,3.153,

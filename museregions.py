@@ -9,12 +9,24 @@ from matplotlib.ticker import MultipleLocator
 
 plt.ion()
 
-#REGION_FILE = './Data/MUSE/regions/7to9region.reg'
-REGION_FILE = './Data/MUSE/regions/3to5region.reg'
+regions_dict = {
+    'A_7to9': './Data/MUSE/regions/7to9region.reg',
+    'B_3to5': './Data/MUSE/regions/3to5region.reg',
+    'blob': './Data/MUSE/regions/blob.reg',
+    '12': './Data/MUSE/regions/12.reg',
+    '9to10': './Data/MUSE/regions/9to10region.reg',
+    '9': './Data/MUSE/regions/9region.reg',
+    '12_30': './Data/MUSE/regions/12_30.reg',
+    '6': './Data/MUSE/regions/6.reg',
+    '4': './Data/MUSE/regions/4.reg',
+    '5': './Data/MUSE/regions/5.reg',
+    '7to8': './Data/MUSE/regions/7to8.reg',
+}
+REGION_FILE = regions_dict['7to8']
+
 LINE_FILE = './absorption_wls/horseshoe_atoms.dat'
 
-z_B = 1.677  # redshift for source B (repo-wide convention)
-z_A = 1.679
+z = 1.679  # toggle: 1.679 or 1.677
 
 # --- load the cube ---
 hdul = fits.open('./Data/MUSE/muse.fits', memmap=True)
@@ -44,7 +56,7 @@ hdul.close()
 # --- observed-frame wavelength axis, then de-redshift to rest frame ---
 n_wave = header['NAXIS3']
 lam_obs = header['CRVAL3'] + (np.arange(n_wave) + 1 - header['CRPIX3']) * header['CD3_3']
-lam_rest = lam_obs / (1 + z_B)
+lam_rest = lam_obs / (1 + z)
 
 # --- load the horseshoe absorption line list (rest-frame wavelengths) ---
 horseshoe_ref = np.genfromtxt(LINE_FILE, dtype=str)
@@ -64,9 +76,9 @@ for name, wl in zip(line_names[in_range], line_wl[in_range]):
             fontsize=5.5, ha='center', color='red')
 
 ax.xaxis.set_minor_locator(MultipleLocator(10))
-ax.set_xlabel(f'Rest-frame Wavelength [Angstrom] (source B, z={z_B})')
+ax.set_xlabel(f'Rest-frame Wavelength [Angstrom] (z={z})')
 ax.set_ylabel(f"Flux [{header.get('BUNIT', '')}]")
-ax.set_title(f'MUSE integrated spectrum: z = 1.677 ({os.path.basename(REGION_FILE)})')
+ax.set_title(f'MUSE integrated spectrum: z = {z} ({os.path.basename(REGION_FILE)})')
 ax.legend(loc='upper right', fontsize=8)
 fig.tight_layout()
 

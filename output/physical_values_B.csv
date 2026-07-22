@@ -12,4 +12,5 @@ Halpha/Hbeta_red_wing,3.539471480192557,4.046662054614118,"red_wing component, o
 Hgamma/Hbeta_red_wing,0.5524929882801486,0.7378944638882173,"red_wing component, observed fluxes"
 E(B-V)_cumulative,0.1244157591678729,0.1087726869121584,derived from cumulative Halpha/Hbeta decrement
 abundance_cumulative_12log(O/H),8.048218541341635,0.3129856640063304,KD02 R23 branch-averaged method
+abundance_cumulative_12log(O/H)_K19_N2Ha,8.376410311833645,,"ALTERNATIVE estimate, not the primary abundance above -- Kewley+2019 Table 2 [NII]/Halpha bicubic surface (k19_n2ha_q), using log(U) derived from log_q (KD02/KK04); [NII] is a 3-sigma upper limit for Source B so uncertainty is NaN (value is a ceiling)"
 log_q,8.203311675277122,0.1661404999949569,KD02/KK04 ionization parameter

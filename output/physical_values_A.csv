@@ -9,4 +9,5 @@ Hgamma/Hbeta_central,0.4713585427543186,0.0362392223864046,"central component, o
 Halpha/Hbeta_red_wing,3.0961900892691343,0.5923293210541914,"red_wing component, observed fluxes"
 Hgamma/Hbeta_red_wing,0.4341313121925595,0.1417749403290352,"red_wing component, observed fluxes"
 E(B-V)_cumulative,0.2130578640036183,0.0371330757107217,derived from cumulative Halpha/Hbeta decrement
-abundance_cumulative_12log(O/H),8.341090761518412,0.2123325646466278,KD02 [NII]/[OII] method
+abundance_cumulative_12log(O/H),8.1980463104847,0.10051921261258974,"Kewley+2019 Table 2 [NII]/Halpha bicubic surface (k19_n2ha_q), using log(U) derived from log_q (KD02 z_halfsolar_combined) -- KD02's own [NII]/[OII] and R23 branches did not converge/apply for this source; uncertainty includes K19's quoted 0.67% RMS scatter added in quadrature to the propagated measurement error"
+log_q,8.389248723928983,0.09072700926725101,"KD02 ionization parameter (z_halfsolar_combined, KD02_O32)"
