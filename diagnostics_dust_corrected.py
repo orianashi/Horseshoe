@@ -16,11 +16,21 @@ DIAGDIR = f'{DUSTDIR}/dust_corrected_diagnostics'
 os.makedirs(DIAGDIR, exist_ok=True)
 
 # source A components are [central, red_wing]; source B are [red_wing,
-# central, blue_wing] -- except [OII]3726/3729 where A has only 1 (roleless)
-# component and B has only 2 (no blue_wing).
+# central, blue_wing] -- except [OII]3726/3729 where both sources have only 1
+# (roleless) component (source B's red wing was removed as noise-dominated,
+# see jointfit_all.py).
 WING_NAMES = {
     'A': ['central', 'red_wing'],
     'B': ['red_wing', 'central', 'blue_wing'],
+}
+# [OII] lines get their own wing-name list: unlike every other line (which, if
+# truncated, is only ever missing its LAST wing(s) -- e.g. source A never has
+# a blue_wing), source B's [OII] is missing its FIRST wing (red_wing), so
+# indexing/enumerating it against the generic WING_NAMES['B'] order would
+# mislabel its lone surviving component as 'red_wing' instead of 'central'.
+OII_WING_NAMES = {
+    'A': ['central'],
+    'B': ['central'],
 }
 
 # physical_values_A.csv / physical_values_B.csv are shared with btfr.py and
@@ -262,19 +272,25 @@ component_out = {'A': {}, 'B': {}}
 for src, wings in WING_NAMES.items():
     for i, wing in enumerate(wings):
         # not every line has a component at this wing index for every source
-        # (see [OII] truncation) -- skip a wing once any required line runs out
+        # (see [OII] truncation) -- skip a wing once any required line runs
+        # out. [OII] is looked up via OII_WING_NAMES (its own, source-specific
+        # wing-name list) rather than the shared `i`, since its component list
+        # is truncated from the FRONT (missing red_wing) for source B, unlike
+        # every other line here (truncated from the back) -- a ValueError
+        # from .index() means [OII] has no component for this wing at all.
         try:
-            oii3726_f = OII3726['component_fluxes'][src][i]
-            oii3729_f = OII3729['component_fluxes'][src][i]
+            oii_i = OII_WING_NAMES[src].index(wing)
+            oii3726_f = OII3726['component_fluxes'][src][oii_i]
+            oii3729_f = OII3729['component_fluxes'][src][oii_i]
             oiii4959_f = OIII4959['component_fluxes'][src][i]
             oiii5007_f = OIII5007['component_fluxes'][src][i]
             hbeta_f = Hbeta['component_fluxes'][src][i]
-            oii3726_u = OII3726['component_flux_uncerts'][src][i]
-            oii3729_u = OII3729['component_flux_uncerts'][src][i]
+            oii3726_u = OII3726['component_flux_uncerts'][src][oii_i]
+            oii3729_u = OII3729['component_flux_uncerts'][src][oii_i]
             oiii4959_u = OIII4959['component_flux_uncerts'][src][i]
             oiii5007_u = OIII5007['component_flux_uncerts'][src][i]
             hbeta_u = Hbeta['component_flux_uncerts'][src][i]
-        except IndexError:
+        except (IndexError, ValueError):
             continue
 
         R23_val, R23_err = R23(oii3726_f, oii3729_f, oiii4959_f, oiii5007_f, hbeta_f,
@@ -314,10 +330,11 @@ for src, wings in WING_NAMES.items():
 
 for src in ('A', 'B'):
     idx_central = WING_NAMES[src].index('central')
+    oii_idx_central = OII_WING_NAMES[src].index('central')
     add_central_N2_NII_OII(
         component_out[src],
         Halpha['component_fluxes'][src][idx_central], Halpha['component_flux_uncerts'][src][idx_central],
-        OII3726['component_fluxes'][src][idx_central], OII3726['component_flux_uncerts'][src][idx_central],
+        OII3726['component_fluxes'][src][oii_idx_central], OII3726['component_flux_uncerts'][src][oii_idx_central],
         NII6583['fluxes'][src], NII6583['flux_uncerts'][src])
 
 # Source A's [OII] doublet is a single un-split Gaussian (no red_wing entry
@@ -340,13 +357,23 @@ def add_balmer_only_wing(component_dict, src, wing, ebv_value, ebv_err):
 add_balmer_only_wing(component_out, 'A', 'red_wing',
                      EBV_component['value']['A']['red_wing'], EBV_component['err']['A']['red_wing'])
 
-# same fix, for source B's blue_wing: B's [OII]3726/3729 and [OIII]4959/5007
-# only have 2 components (red_wing, central -- no blue_wing), so the wing
-# loop above skips 'B' 'blue_wing' entirely via its IndexError guard, even
-# though Halpha/Hbeta/Hgamma DO have a blue_wing component for B -- add that
-# wing back in with just the Balmer-decrement fields, same as A's red_wing.
+# same fix, for source B's blue_wing: B's [OIII]4959/5007 only have 2
+# components (red_wing, central -- no blue_wing), so the wing loop above
+# skips 'B' 'blue_wing' entirely via its IndexError guard, even though
+# Halpha/Hbeta/Hgamma DO have a blue_wing component for B -- add that wing
+# back in with just the Balmer-decrement fields, same as A's red_wing.
 add_balmer_only_wing(component_out, 'B', 'blue_wing',
                      EBV_component['value']['B']['blue_wing'], EBV_component['err']['B']['blue_wing'])
+
+# same fix, for source B's red_wing: B's [OII]3726/3729 now has no red_wing
+# component at all (removed as noise-dominated, see jointfit_all.py/
+# OII_WING_NAMES above), so the wing loop above skips 'B' 'red_wing' via its
+# ValueError guard (OII_WING_NAMES['B'].index('red_wing') fails), even though
+# Halpha/Hbeta/Hgamma and [OIII]4959/5007 DO have a red_wing component for B
+# -- add that wing back in with just the Balmer-decrement fields, same as
+# A's red_wing / B's blue_wing above.
+add_balmer_only_wing(component_out, 'B', 'red_wing',
+                     EBV_component['value']['B']['red_wing'], EBV_component['err']['B']['red_wing'])
 
 # ====================================
 # component-wise, per source per wing, using the CUMULATIVE E(B-V) applied to
@@ -362,18 +389,23 @@ add_balmer_only_wing(component_out, 'B', 'blue_wing',
 component_out_cumulativeEBV = {'A': {}, 'B': {}}
 for src, wings in WING_NAMES.items():
     for i, wing in enumerate(wings):
+        # see the analogous try/except in component_out above -- [OII] is
+        # looked up via OII_WING_NAMES since its component list is truncated
+        # from the front (missing red_wing) for source B, unlike every other
+        # line here.
         try:
-            oii3726_f = OII3726['component_fluxes_cumulativeEBV'][src][i]
-            oii3729_f = OII3729['component_fluxes_cumulativeEBV'][src][i]
+            oii_i = OII_WING_NAMES[src].index(wing)
+            oii3726_f = OII3726['component_fluxes_cumulativeEBV'][src][oii_i]
+            oii3729_f = OII3729['component_fluxes_cumulativeEBV'][src][oii_i]
             oiii4959_f = OIII4959['component_fluxes_cumulativeEBV'][src][i]
             oiii5007_f = OIII5007['component_fluxes_cumulativeEBV'][src][i]
             hbeta_f = Hbeta['component_fluxes_cumulativeEBV'][src][i]
-            oii3726_u = OII3726['component_flux_uncerts_cumulativeEBV'][src][i]
-            oii3729_u = OII3729['component_flux_uncerts_cumulativeEBV'][src][i]
+            oii3726_u = OII3726['component_flux_uncerts_cumulativeEBV'][src][oii_i]
+            oii3729_u = OII3729['component_flux_uncerts_cumulativeEBV'][src][oii_i]
             oiii4959_u = OIII4959['component_flux_uncerts_cumulativeEBV'][src][i]
             oiii5007_u = OIII5007['component_flux_uncerts_cumulativeEBV'][src][i]
             hbeta_u = Hbeta['component_flux_uncerts_cumulativeEBV'][src][i]
-        except IndexError:
+        except (IndexError, ValueError):
             continue
 
         R23_val, R23_err = R23(oii3726_f, oii3729_f, oiii4959_f, oiii5007_f, hbeta_f,
@@ -413,12 +445,13 @@ for src, wings in WING_NAMES.items():
 
 for src in ('A', 'B'):
     idx_central = WING_NAMES[src].index('central')
+    oii_idx_central = OII_WING_NAMES[src].index('central')
     add_central_N2_NII_OII(
         component_out_cumulativeEBV[src],
         Halpha['component_fluxes_cumulativeEBV'][src][idx_central],
         Halpha['component_flux_uncerts_cumulativeEBV'][src][idx_central],
-        OII3726['component_fluxes_cumulativeEBV'][src][idx_central],
-        OII3726['component_flux_uncerts_cumulativeEBV'][src][idx_central],
+        OII3726['component_fluxes_cumulativeEBV'][src][oii_idx_central],
+        OII3726['component_flux_uncerts_cumulativeEBV'][src][oii_idx_central],
         NII6583['fluxes'][src], NII6583['flux_uncerts'][src])
 
 # same fix as component_out above, for the cumulative-E(B-V) variant --
@@ -430,6 +463,11 @@ add_balmer_only_wing(component_out_cumulativeEBV, 'A', 'red_wing',
 
 # same fix as component_out_cumulativeEBV above, for source B's blue_wing
 add_balmer_only_wing(component_out_cumulativeEBV, 'B', 'blue_wing',
+                     EBV_cumulative['value']['B'], EBV_cumulative['err']['B'])
+
+# same fix as component_out above, for source B's red_wing (see the
+# add_balmer_only_wing(component_out, 'B', 'red_wing', ...) call above)
+add_balmer_only_wing(component_out_cumulativeEBV, 'B', 'red_wing',
                      EBV_cumulative['value']['B'], EBV_cumulative['err']['B'])
 
 # ====================================
@@ -493,10 +531,10 @@ fig, axes = plt.subplots(2, 1, figsize=(4, 8), gridspec_kw={"hspace": 0})
 
 # source B's N2 is a one-sided upper limit (NII6583 flux is a 3-sigma
 # ceiling, see multiple_gaussian_integration.py/dust_extinction.py), so
-# log_N2_B_err is NaN -- use a fixed nominal arrow length instead, purely to
-# size the left-pointing upper-limit arrow drawn below, not a real error.
-ARROW_LEN = 0.15
-x_left = min(log_N2_A - log_N2_A_err, log_N2_B - ARROW_LEN) - 0.15
+# log_N2_B_err is NaN -- there's no real x-error to size an extent off of, so
+# just use log_N2_B itself (its marker is a leftward-pointing triangle, see
+# below, not an error bar).
+x_left = min(log_N2_A - log_N2_A_err, log_N2_B) - 0.15
 x = np.linspace(x_left, 0.2, 1000)
 y_B = bpt_line(x, z_B)
 y_A = bpt_line(x, z_A)
@@ -521,11 +559,11 @@ axes[0].tick_params(axis='x', which='both', labelbottom=False, bottom=False)
 axes[1].set_xlim(x_left, 0.2)
 axes[1].set_ylim(-1.5, 1.5)
 axes[1].plot(x, y_B, color='blue', lw=0.8)
-# N2 is a one-sided upper limit for B -- draw a leftward arrow at the limit
-# (xuplims=True) instead of a symmetric x error bar; ARROW_LEN only sizes
-# the arrow glyph, it isn't a real uncertainty.
-axes[1].errorbar(log_N2_B, log_OIIIbeta_B, xerr=ARROW_LEN, xuplims=True, yerr=log_OIIIbeta_B_err,
-                 fmt='o', color='purple', markersize=6, lw=0.45)
+# N2 is a one-sided upper limit for B -- represent it with a leftward-
+# pointing triangle marker (no x error bar/arrow annotation) so the marker
+# shape itself conveys "true value lies to the left of this point".
+axes[1].errorbar(log_N2_B, log_OIIIbeta_B, yerr=log_OIIIbeta_B_err,
+                 fmt='<', color='purple', markersize=6, lw=0.45)
 axes[1].xaxis.set_minor_locator(MultipleLocator(0.1))
 axes[1].yaxis.set_minor_locator(MultipleLocator(0.1))
 axes[1].tick_params(axis='x', which='both', top=True, labeltop=False)
@@ -538,6 +576,36 @@ axes[1].text(agn_x, agn_y, "AGN", color='blue',fontsize=9, ha='center', va='bott
 fig.tight_layout()
 
 fig.savefig(f'{DIAGDIR}/bpt_dust_corrected.png')
+plt.show()
+
+# ====================================
+# BPT_condensed -- both sources overlaid on one shared panel (instead of the
+# stacked two-panel figure above), same demarcation curves/markers/colors
+# ====================================
+fig_c, ax_c = plt.subplots(figsize=(4.5, 4.5))
+ax_c.plot(x, y_A, color='blue', lw=0.8)
+ax_c.plot(x, y_B, color='blue', lw=0.8, ls='--')
+ax_c.errorbar(log_N2_A, log_OIIIbeta_A, xerr=log_N2_A_err, yerr=log_OIIIbeta_A_err,
+             fmt='o', color='orange', markersize=6, lw=0.45)
+# source B: leftward-pointing triangle, no x error bar (one-sided upper
+# limit), matching the fix above
+ax_c.errorbar(log_N2_B, log_OIIIbeta_B, yerr=log_OIIIbeta_B_err,
+             fmt='<', color='purple', markersize=6, lw=0.45)
+ax_c.set_xlim(x_left, 0.2)
+ax_c.set_ylim(-1.5, 1.5)
+ax_c.xaxis.set_minor_locator(MultipleLocator(0.1))
+ax_c.yaxis.set_minor_locator(MultipleLocator(0.1))
+ax_c.set_xlabel("log([NII]/H$\\alpha$)")
+ax_c.set_ylabel("log([OIII]/H$\\beta$)")
+ax_c.text(log_N2_A, log_OIIIbeta_A - 0.15, r"Source A ($z$ = 1.679)",
+         color='orange', fontsize=9, ha='center', va='top')
+ax_c.text(log_N2_B, log_OIIIbeta_B - 0.25, r"Source B ($z$ = 1.677)",
+         color='purple', fontsize=9, ha='center', va='top')
+ax_c.text(sf_x, sf_y, "SF", color='blue', fontsize=9, ha='center', va='top')
+ax_c.text(agn_x, agn_y, "AGN", color='blue', fontsize=9, ha='center', va='bottom')
+fig_c.tight_layout()
+
+fig_c.savefig(f'{DIAGDIR}/BPT_condensed.png')
 plt.show()
 
 # ====================================

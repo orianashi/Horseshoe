@@ -18,9 +18,10 @@ LINES = {
     # for every line except [OII] (single role-less component for A) and
     # [NII]6584 (also a single role-less component for A, no wing
     # decomposition); source B has 3 (red, central, blue wing) for every line
-    # except [OII] (2: red, central; no blue wing) and [NII]6584 (also a
-    # single component for B). All eight lines' matching components share one
-    # compound model and one covariance matrix via baked ties (see
+    # except [OII] (single role-less component for B, same as A -- no wing
+    # decomposition, red wing removed as noise-dominated) and [NII]6584 (no
+    # fitted component for B at all). All eight lines' matching components
+    # share one compound model and one covariance matrix via baked ties (see
     # tie_map/load_tie_map), so flux_and_uncert's tie_map handling already
     # propagates cross-line uncertainty correctly -- no separate `tie` Monte
     # Carlo config needed.
@@ -58,17 +59,19 @@ LINES = {
     },
     # [OII]3726 and [OII]3729 share one saved model/window (see
     # jointfit_all.py's combined '[OII]' window) -- both entries point at the
-    # same pkl, just with each line's own component indices.
+    # same pkl, just with each line's own component indices. Source B has no
+    # red-wing component here (removed -- see jointfit_all.py), so B_indices
+    # is a single-entry list, same structure as source A.
     'OII3726': {
         'pkl': './output/joint_fit/jointfit_all/[OII]_joint_tied_fit.pkl',
         'A_indices': [25],
-        'B_indices': [26, 27],
+        'B_indices': [26],
         'save': './output/joint_fit/jointfit_all/fluxes/OII3726_fluxes.pkl',
     },
     'OII3729': {
         'pkl': './output/joint_fit/jointfit_all/[OII]_joint_tied_fit.pkl',
-        'A_indices': [28],
-        'B_indices': [29, 30],
+        'A_indices': [27],
+        'B_indices': [28],
         'save': './output/joint_fit/jointfit_all/fluxes/OII3729_fluxes.pkl',
     },
     # single component per source (no wing decomposition) -- see
@@ -76,7 +79,7 @@ LINES = {
     # component and fit within Halpha's own (widened) window.
     'NII6584': {
         'pkl': './output/joint_fit/jointfit_all/[NII]6584_joint_tied_fit.pkl',
-        'A_indices': [31],
+        'A_indices': [29],
         # source B has no fitted component (see jointfit_all.py) -- flux_and_uncert
         # with an empty index list is a safe no-op (returns (0.0, 0.0)); B's
         # real value is substituted below from the pkl's 'upper_limit_B'.

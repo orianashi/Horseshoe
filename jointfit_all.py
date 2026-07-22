@@ -152,14 +152,43 @@ def build_tied(label, ref_idx, line_ratio, amplitude_guess, amplitude_bound):
     return g
 
 
+def build_mean_tied_free_stddev(label, mean_ref_idx, mean_ratio, amplitude_guess,
+                                amplitude_bound, stddev_guess, stddev_bounds):
+    """Mean tied to another component (locks redshift/velocity offset to that
+    reference), but stddev is a genuinely free fitted parameter -- untied from
+    the assumption that this line shares its reference's width. Used for the
+    [OII] doublet's width 'master' component per source/role ([OII]3726),
+    whose width is no longer assumed equal to Halpha's."""
+    g = models.Gaussian1D(name=label, mean=1.0, amplitude=amplitude_guess,
+                          stddev=stddev_guess)
+    g.mean.tied = MeanTie(mean_ref_idx, mean_ratio)
+    g.stddev.bounds = stddev_bounds
+    g.amplitude.bounds = amplitude_bound
+    return g
+
+
+def build_mean_and_stddev_tied(label, mean_ref_idx, mean_ratio, stddev_ref_idx,
+                               stddev_ratio, amplitude_guess, amplitude_bound):
+    """Mean tied to one reference (Halpha's component, locking redshift),
+    stddev tied to a DIFFERENT reference -- used for [OII]3729, which shares
+    its doublet partner [OII]3726's own fitted width (the 'master' built by
+    build_mean_tied_free_stddev above) rather than Halpha's width."""
+    g = models.Gaussian1D(name=label, mean=1.0, amplitude=amplitude_guess,
+                          stddev=1.0)
+    g.mean.tied = MeanTie(mean_ref_idx, mean_ratio)
+    g.stddev.tied = StdTie(stddev_ref_idx, stddev_ratio)
+    g.amplitude.bounds = amplitude_bound
+    return g
+
+
 A_INDICES = {
     'Halpha': [0, 1],
     '[OIII]5007': [5, 6],
     '[OIII]4959': [10, 11],
     'Hbeta': [15, 16],
     'Hgamma': [20, 21],
-    '[OII]': [25, 28],
-    '[NII]6584': [31],
+    '[OII]': [25, 27],
+    '[NII]6584': [29],
 }
 B_INDICES = {
     'Halpha': [2, 3, 4],
@@ -167,7 +196,7 @@ B_INDICES = {
     '[OIII]4959': [12, 13, 14],
     'Hbeta': [17, 18, 19],
     'Hgamma': [22, 23, 24],
-    '[OII]': [26, 27, 29, 30],
+    '[OII]': [26, 28],
     '[NII]6584': [],  # no fitted component for B -- see build_tied comment above
 }
 
@@ -286,10 +315,10 @@ if __name__ == "__main__":
     # dedicated narrow window purely for a standalone [NII]6584 plot/save --
     # NOT part of `line_order` (the list concatenated into lam_all for the
     # joint fit): its pixels are already covered by Halpha's widened window
-    # above, and its Gaussian components (indices 31, 32) are tied to and
-    # fit jointly with Halpha there. Adding it to `line_order` would
-    # double-count those pixels and add a second, unconstrained continuum
-    # term overlapping Halpha's.
+    # above, and its Gaussian component (index 29, source A only -- source B
+    # has no fitted component) is tied to and fit jointly with Halpha there.
+    # Adding it to `line_order` would double-count those pixels and add a
+    # second, unconstrained continuum term overlapping Halpha's.
     nii_center = rest['[NII]6584'] * (1 + z_B)
     zoom_nii = np.where((lam >= nii_center - 30) & (lam <= nii_center + 30))[0]
     lam_trim = lam[zoom_nii]
@@ -344,14 +373,14 @@ if __name__ == "__main__":
     # 18: Hbeta_B_central (tied 3) 19: Hbeta_B_blue (tied 4)
     # 20: Hgamma_A_central (tied 0)  21: Hgamma_A_red (tied 1) 22: Hgamma_B_red (tied 2)
     # 23: Hgamma_B_central (tied 3) 24: Hgamma_B_blue (tied 4)
-    # 25: [OII]3726_A (tied 0, wing amplitude bounds)
-    # 26: [OII]3726_B_red (tied 2)  27: [OII]3726_B_central (tied 3)
-    # 28: [OII]3729_A (tied 0)
-    # 29: [OII]3729_B_red (tied 2)  30: [OII]3729_B_central (tied 3, wing amplitude bounds)
-    # 31: [NII]6584_A (tied 0, single component -- no wing decomposition)
-    # 32: [NII]6584_B (tied 3, single component -- no wing decomposition)
-    # 33: continuum_Halpha  34: continuum_[OIII]5007  35: continuum_[OIII]4959
-    # 36: continuum_Hbeta  37: continuum_Hgamma  38: continuum_[OII]
+    # 25: [OII]3726_A (mean tied 0, stddev FREE -- wing amplitude bounds)
+    # 26: [OII]3726_B_central (mean tied 3, stddev FREE)
+    # 27: [OII]3729_A (mean tied 0, stddev tied 25)
+    # 28: [OII]3729_B_central (mean tied 3, stddev tied 26, wing amplitude bounds)
+    # 29: [NII]6584_A (tied 0, single component -- no wing decomposition)
+    # [NII]6584_B has no fitted component (3-sigma upper limit instead, see below)
+    # 30: continuum_Halpha  31: continuum_[OIII]5007  32: continuum_[OIII]4959
+    # 33: continuum_Hbeta  34: continuum_Hgamma  35: continuum_[OII]
     # ==================
     gaussians = []
 
@@ -398,27 +427,39 @@ if __name__ == "__main__":
     gaussians.append(build_tied('Hgamma_B_blue', 4, r_hg_ha, 1, (0, None)))  # 24
 
     # [OII]: source A stays a single Gaussian per line (no central/red/blue
-    # decomposition), tied to Halpha's *_central component (ref_idx 0).
-    # Source B now also gets a red-wing component (ref_idx 2), same as every
-    # other line's B_red. [OII]3726_A and [OII]3729_B_central are blended
-    # with each other, so their amplitude bounds replicate
-    # oii_gaussian_fitting.py lines 220-233, derived from the unblended wing
-    # fit's amplitudes.
+    # decomposition). Source B is ALSO a single Gaussian per line here (no
+    # red-wing component) -- combining two experiments: (1) the red wing was
+    # noise-dominated and removed (same treatment as [NII]6584_B), and (2)
+    # the remaining components' widths are untied from Halpha (see WIDTH TIES
+    # below). [OII]3726_A and [OII]3729_B_central are blended with each
+    # other, so their amplitude bounds replicate oii_gaussian_fitting.py
+    # lines 220-233, derived from the unblended wing fit's amplitudes.
+    #
+    # WIDTH TIES (experiment): mean (redshift/velocity offset) still ties each
+    # [OII] component to its matching Halpha component, same as every other
+    # line -- but stddev (width) no longer assumes the [OII] doublet shares
+    # Halpha's width. Instead [OII]3726 is a width "master" per source/role
+    # with its own genuinely free stddev, and [OII]3729 (its doublet partner)
+    # ties its stddev to [OII]3726's fitted width (scaled by the tiny
+    # 3729/3726 rest-wavelength ratio) -- i.e. the two [OII] lines share one
+    # width each, decoupled from the Balmer/[OIII] lines' widths.
     r_oii3726_ha = rest['[OII]3726'] / rest['Halpha']
     gaussians.append(
-        build_tied('[OII]3726_A', 0, r_oii3726_ha, amp0_wing / 1.4,
-                   (amp0_wing / 1.5, amp0_wing / 0.35)))  # 25
-    gaussians.append(build_tied('[OII]3726_B_red', 2, r_oii3726_ha, 1, (0, None)))  # 26
+        build_mean_tied_free_stddev('[OII]3726_A', 0, r_oii3726_ha, amp0_wing / 1.4,
+                   (amp0_wing / 1.5, amp0_wing / 0.35),
+                   stddev_guess=1.0, stddev_bounds=(0, 3)))  # 25
     gaussians.append(
-        build_tied('[OII]3726_B_central', 3, r_oii3726_ha, amp1_wing, (0, None)))  # 27
+        build_mean_tied_free_stddev('[OII]3726_B_central', 3, r_oii3726_ha, amp1_wing, (0, None),
+                   stddev_guess=1.0, stddev_bounds=(0, 3)))  # 26
 
     r_oii3729_ha = rest['[OII]3729'] / rest['Halpha']
+    r_oii3729_3726 = rest['[OII]3729'] / rest['[OII]3726']
     gaussians.append(
-        build_tied('[OII]3729_A', 0, r_oii3729_ha, amp0_wing, (0, None)))  # 28
-    gaussians.append(build_tied('[OII]3729_B_red', 2, r_oii3729_ha, 1, (0, None)))  # 29
+        build_mean_and_stddev_tied('[OII]3729_A', 0, r_oii3729_ha, 25, r_oii3729_3726,
+                   amp0_wing, (0, None)))  # 27
     gaussians.append(
-        build_tied('[OII]3729_B_central', 3, r_oii3729_ha, amp1_wing * 1.4,
-                   (amp0_wing * 0.35, amp1_wing * 1.5)))  # 30
+        build_mean_and_stddev_tied('[OII]3729_B_central', 3, r_oii3729_ha, 26, r_oii3729_3726,
+                   amp1_wing * 1.4, (amp0_wing * 0.35, amp1_wing * 1.5)))  # 28
 
     # [NII]6584: single Gaussian per source (no red/blue wing decomposition,
     # unlike Halpha/OIII/Hbeta/Hgamma), tied to Halpha's central component.
@@ -433,7 +474,7 @@ if __name__ == "__main__":
     # 3) scaled by this same tie ratio -- i.e. still "tied" to Halpha_B's
     # width, just not as a live fit parameter.
     r_nii_ha = rest['[NII]6584'] / rest['Halpha']
-    gaussians.append(build_tied('[NII]6584_A', 0, r_nii_ha, 0.3, (0, None)))  # 31
+    gaussians.append(build_tied('[NII]6584_A', 0, r_nii_ha, 0.3, (0, None)))  # 29
 
     continua = []
     for name in line_order:

@@ -1,0 +1,15 @@
+quantity,value,uncertainty,notes
+log_M_btfr6_26_corrected_edgeon,8.620356660762642,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, edge-on (i=90deg)"
+log_M_btfr6_26_corrected_45deg,9.184787902632609,0.2507387334341557,"Ubler 2017 eq. 6.26, instrumental-broadening corrected, i=45deg"
+SFR_MZR,-0.1636770352296154,1.404835379506118,"higher of two real roots (Mannucci+10 eq. 2, edge-on mass); rejected lower root log(SFR)=-5.495 as unphysical/near-zero SFR"
+Halpha/Hbeta_cumulative,3.2358105537127826,0.3495080000948127,"observed, pre-dust-correction fluxes"
+Hgamma/Hbeta_cumulative,0.5615068241051221,0.0947957927161032,"observed, pre-dust-correction fluxes"
+Halpha/Hbeta_red_wing,3.3174348815342456,3.805346776446543,"red_wing component, observed fluxes"
+Hgamma/Hbeta_red_wing,0.547054935914734,0.6889040096183632,"red_wing component, observed fluxes"
+Halpha/Hbeta_central,2.9798157989922003,1.445695787724368,"central component, observed fluxes"
+Hgamma/Hbeta_central,0.528970131320176,0.2582827493657338,"central component, observed fluxes"
+Halpha/Hbeta_blue_wing,5.221519112554031,2.6840157752750318,"blue_wing component, observed fluxes"
+Hgamma/Hbeta_blue_wing,0.9179606930691016,0.6240305873883034,"blue_wing component, observed fluxes"
+E(B-V)_cumulative,0.1248302559679508,0.1092132316580998,derived from cumulative Halpha/Hbeta decrement
+abundance_cumulative_12log(O/H),8.076321548507469,0.3397352574387192,KD02 R23 branch-averaged method
+log_q,7.928105634547637,0.15950282636661928,KD02/KK04 ionization parameter

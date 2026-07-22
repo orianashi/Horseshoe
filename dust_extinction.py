@@ -26,12 +26,22 @@ wavelengths_AA = {
 }
 
 # source A components are [central, red_wing]; source B are [red_wing,
-# central, blue_wing] -- except [OII]3726/3729 where A has only 1 (roleless)
-# component and B has only 2 (no blue_wing). Slicing to len(component_fluxes)
-# handles that truncation with no special-casing.
+# central, blue_wing] -- except [OII]3726/3729 where both sources have only 1
+# (roleless) component (source B's red wing was removed as noise-dominated,
+# see jointfit_all.py). Slicing to len(component_fluxes) handles ordinary
+# truncation (a source missing its LAST wing(s)) with no special-casing --
+# but [OII] for source B is missing its FIRST wing (red_wing) instead, so its
+# lone surviving component would be mislabeled 'red_wing' by that generic
+# slicing. OII_WING_NAMES gives [OII] lines their own (source-specific)
+# wing-name list so their sole component is correctly labeled 'central'.
 WING_NAMES = {
     'A': ['central', 'red_wing'],
     'B': ['red_wing', 'central', 'blue_wing'],
+}
+OII_LINES = {'OII3726', 'OII3729'}
+OII_WING_NAMES = {
+    'A': ['central'],
+    'B': ['central'],
 }
 
 OUTDIR = './output/dust_corrected'
@@ -193,7 +203,8 @@ for line in LINE_NAMES:
     for src in ('A', 'B'):
         comp_flux = fluxes[line]['component_fluxes'][src]
         comp_flux_err = fluxes[line]['component_flux_uncerts'][src]
-        wings = WING_NAMES[src][:len(comp_flux)]
+        wing_names = OII_WING_NAMES if line in OII_LINES else WING_NAMES
+        wings = wing_names[src][:len(comp_flux)]
         for i, wing in enumerate(wings):
             EBV_val, EBV_err = EBV_component[src][wing]
             corrected, corrected_err = flux_correct(comp_flux[i], comp_flux_err[i], line, EBV_val, EBV_err)
@@ -216,7 +227,8 @@ for line in LINE_NAMES:
     for src in ('A', 'B'):
         comp_flux = fluxes[line]['component_fluxes'][src]
         comp_flux_err = fluxes[line]['component_flux_uncerts'][src]
-        wings = WING_NAMES[src][:len(comp_flux)]
+        wing_names = OII_WING_NAMES if line in OII_LINES else WING_NAMES
+        wings = wing_names[src][:len(comp_flux)]
         EBV_val, EBV_err = EBV_cumulative[src]
         for i, wing in enumerate(wings):
             corrected, corrected_err = flux_correct(comp_flux[i], comp_flux_err[i], line, EBV_val, EBV_err)
